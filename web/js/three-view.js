@@ -123,7 +123,7 @@ export function mount3D(container, scrubInput, playBtn, jump) {
   loader.load(esriUrl(1024), (low) => { setGround(low); loader.load(esriUrl(2048), setGround); });
 
   // --- track as a phase-coloured 3D tube ---
-  const radius = Math.max(horizSpan * 0.006, 2.5);
+  const radius = Math.max(horizSpan * 0.004, 2);
   let seg = [pts[0]];
   let segPhase = samples[0].phase;
   for (let i = 1; i < pts.length; i++) {
@@ -149,8 +149,8 @@ export function mount3D(container, scrubInput, playBtn, jump) {
   const trackSpan = Math.max(trackBox.getSize(new THREE.Vector3()).length(), horizSpan * 0.4);
 
   // --- ground pins: small precise marker + thin reference pole + label ---
-  const headR = Math.max(radius * 0.45, 2);     // small dot (was ~50 m, now metres)
-  const poleR = Math.max(radius * 0.06, 0.4);   // thin vertical reference line
+  const headR = Math.max(radius * 0.7, 2);      // small dot (metres-scale)
+  const poleR = Math.max(radius * 0.08, 0.4);   // thin vertical reference line
   const labelSize = Math.max(horizSpan * 0.015, 10); // keep the label readable
   pin(pts[0], 0xf6a23b, "EXIT");
   pin(pts[pts.length - 1], 0x10d68a, "LANDING");
@@ -172,11 +172,8 @@ export function mount3D(container, scrubInput, playBtn, jump) {
     scene.add(label(text, p, color, labelSize));
   }
 
-  // animated position marker
-  const pos = sphere(0xffffff, radius * 2.2);
-  const ring = new THREE.Mesh(new THREE.SphereGeometry(radius * 2.4, 16, 16),
-    new THREE.MeshBasicMaterial({ color: 0x0f1b33, transparent: true, opacity: 0.25 }));
-  pos.add(ring);
+  // animated position marker — small precise dot (no big halo)
+  const pos = sphere(0xffffff, Math.max(radius * 0.9, 2.5));
   pos.position.copy(pts[pts.length - 1]);
   scene.add(pos);
 
