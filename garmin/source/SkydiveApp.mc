@@ -5,11 +5,17 @@ import Toybox.Lang;
 // Entry point. Shows the safety disclaimer on first launch, then the main view.
 class SkydiveApp extends Application.AppBase {
 
+    var mUploader as Uploader? = null;
+
     function initialize() {
         AppBase.initialize();
     }
 
-    function onStart(state as Dictionary?) as Void {}
+    function onStart(state as Dictionary?) as Void {
+        // Retry any jumps that couldn't be sent earlier (offline at the DZ).
+        mUploader = new Uploader();
+        mUploader.flush();
+    }
 
     function onStop(state as Dictionary?) as Void {}
 
