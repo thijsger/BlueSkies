@@ -1,4 +1,4 @@
-# Skydive Tracker 🪂
+# BlueSkies 🪂 — Skydive Tracker
 
 Een persoonlijk skydive-volgsysteem in drie delen die samenwerken:
 

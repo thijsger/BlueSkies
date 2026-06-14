@@ -9,7 +9,7 @@
 # Render Postgres option.
 services:
   - type: web
-    name: skydive-tracker
+    name: blueskies
     runtime: node
     plan: starter            # needed for the persistent disk below
     rootDir: server
@@ -24,6 +24,6 @@ services:
       - key: CORS_ORIGIN
         value: "*"
     disk:
-      name: skydive-data
+      name: blueskies-data
       mountPath: /var/data
       sizeGB: 1
