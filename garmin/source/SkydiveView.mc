@@ -200,12 +200,14 @@ class SkydiveView extends WatchUi.View {
     }
 
     // ---------------------------------------------------------- scenes
-    // jp: map a local (lx,ly) in body-units onto screen, scaled by uss and rotated ca/sa
+    // Polished vector animations: clean light stickman with a colored visor on a
+    // dark dial, a line-art jump plane, and a ram-air canopy. Drawn each frame.
+    const INK = 0xEEF3FB;       // figure stroke (light, on the black AMOLED dial)
+
     function jp(ox as Float, oy as Float, lx as Float, ly as Float, uss as Float, ca as Float, sa as Float) as Array {
         return [(ox + (lx * uss) * ca - (ly * uss) * sa).toNumber(), (oy + (lx * uss) * sa + (ly * uss) * ca).toNumber()];
     }
-    // capsule limb: thick line + rounded joints
-    function cap(dc as Graphics.Dc, p1 as Array, p2 as Array, w as Float, col as Number) as Void {
+    function limbW(dc as Graphics.Dc, p1 as Array, p2 as Array, w as Float, col as Number) as Void {
         dc.setColor(col, Graphics.COLOR_TRANSPARENT);
         dc.setPenWidth(maxw(w));
         dc.drawLine(p1[0], p1[1], p2[0], p2[1]);
@@ -213,330 +215,219 @@ class SkydiveView extends WatchUi.View {
         dc.fillCircle(p1[0], p1[1], r);
         dc.fillCircle(p2[0], p2[1], r);
     }
+    function limb3W(dc as Graphics.Dc, p1 as Array, p2 as Array, p3 as Array, w as Float, col as Number) as Void {
+        limbW(dc, p1, p2, w, col);
+        limbW(dc, p2, p3, w, col);
+    }
+    // head with a colored visor wedge facing ang
+    function headV(dc as Graphics.Dc, x as Number, y as Number, r as Number, ang as Float, visor as Number) as Void {
+        dc.setColor(INK, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(x, y, r);
+        dc.setColor(visor, Graphics.COLOR_TRANSPARENT);
+        var vx = (x + Math.cos(ang) * r * 0.45).toNumber();
+        var vy = (y + Math.sin(ang) * r * 0.45).toNumber();
+        dc.fillCircle(vx, vy, maxw(r * 0.5));
+    }
 
-    // A detailed jump plane centred at px,py, tilted ca/sa, scaled by s (units of u).
-    function plane(dc as Graphics.Dc, px as Float, py as Float, u as Float, ca as Float, sa as Float, s as Float) as Void {
-        var uss = u * s;
-        var hub = rp(px, py, 3.3 * uss, -0.04 * uss, ca, sa);
-        // prop blur disc
-        dc.setColor(0x1E2B40, Graphics.COLOR_TRANSPARENT);
-        dc.fillEllipse(hub[0], hub[1], maxw(uss * 0.4), maxw(uss * 1.25));
+    function plane(dc as Graphics.Dc, px as Float, py as Float, a as Float, s as Float) as Void {
+        var ca = Math.cos(a);
+        var sa = Math.sin(a);
+        var U = 10.0 * s;
+        var hub = jp(px, py, 3.2, -0.05, U, ca, sa);
         // fuselage
-        dc.setColor(0xCFD6E3, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(0xDBE3F0, Graphics.COLOR_TRANSPARENT);
         dc.fillPolygon([
-            rp(px, py, -3.1 * uss, 0.28 * uss, ca, sa), rp(px, py, -2.7 * uss, -0.5 * uss, ca, sa),
-            rp(px, py, 2.2 * uss, -0.66 * uss, ca, sa), rp(px, py, 3.05 * uss, -0.32 * uss, ca, sa),
-            rp(px, py, 3.3 * uss, -0.04 * uss, ca, sa), rp(px, py, 3.1 * uss, 0.22 * uss, ca, sa),
-            rp(px, py, 2.4 * uss, 0.66 * uss, ca, sa), rp(px, py, -2.7 * uss, 0.66 * uss, ca, sa)
+            jp(px, py, -3.1, 0.25, U, ca, sa), jp(px, py, -2.7, -0.48, U, ca, sa),
+            jp(px, py, 2.2, -0.62, U, ca, sa), jp(px, py, 3.05, -0.3, U, ca, sa),
+            jp(px, py, 3.22, 0.0, U, ca, sa), jp(px, py, 3.0, 0.24, U, ca, sa),
+            jp(px, py, 2.35, 0.62, U, ca, sa), jp(px, py, -2.7, 0.6, U, ca, sa)
         ]);
-        // top highlight + belly shade
-        dc.setColor(0xEEF2FA, Graphics.COLOR_TRANSPARENT);
-        dc.fillPolygon([rp(px, py, -2.7 * uss, -0.5 * uss, ca, sa), rp(px, py, 2.2 * uss, -0.66 * uss, ca, sa), rp(px, py, 2.6 * uss, -0.4 * uss, ca, sa), rp(px, py, -2.6 * uss, -0.24 * uss, ca, sa)]);
-        dc.setColor(0x9AA6BA, Graphics.COLOR_TRANSPARENT);
-        dc.fillPolygon([rp(px, py, -2.7 * uss, 0.66 * uss, ca, sa), rp(px, py, 2.4 * uss, 0.66 * uss, ca, sa), rp(px, py, 2.7 * uss, 0.4 * uss, ca, sa), rp(px, py, -2.6 * uss, 0.42 * uss, ca, sa)]);
+        // window strip
+        dc.setColor(0x0E1B30, Graphics.COLOR_TRANSPARENT);
+        dc.fillPolygon([jp(px, py, -1.9, -0.34, U, ca, sa), jp(px, py, 2.0, -0.46, U, ca, sa), jp(px, py, 2.45, -0.14, U, ca, sa), jp(px, py, -1.9, -0.04, U, ca, sa)]);
         // brand stripe
-        dc.setColor(0x4F8DFF, Graphics.COLOR_TRANSPARENT);
-        dc.fillPolygon([rp(px, py, -2.5 * uss, 0.12 * uss, ca, sa), rp(px, py, 2.3 * uss, 0.0, ca, sa), rp(px, py, 2.35 * uss, 0.2 * uss, ca, sa), rp(px, py, -2.5 * uss, 0.3 * uss, ca, sa)]);
-        // cockpit window
-        dc.setColor(0x0A1426, Graphics.COLOR_TRANSPARENT);
-        dc.fillPolygon([rp(px, py, 2.35 * uss, -0.5 * uss, ca, sa), rp(px, py, 3.05 * uss, -0.18 * uss, ca, sa), rp(px, py, 3.0 * uss, 0.08 * uss, ca, sa), rp(px, py, 2.4 * uss, 0.0, ca, sa)]);
-        // cabin windows
-        dc.setColor(0x9CC2F2, Graphics.COLOR_TRANSPARENT);
-        for (var i = 0; i < 5; i++) {
-            var q = rp(px, py, (1.5 - i * 0.78) * uss, -0.2 * uss, ca, sa);
-            dc.fillCircle(q[0], q[1], maxw(uss * 0.15));
-        }
-        // tail fin + stabiliser
-        dc.setColor(0xCFD6E3, Graphics.COLOR_TRANSPARENT);
-        dc.fillPolygon([rp(px, py, -3.1 * uss, -0.42 * uss, ca, sa), rp(px, py, -2.55 * uss, -1.8 * uss, ca, sa), rp(px, py, -2.05 * uss, -1.8 * uss, ca, sa), rp(px, py, -2.2 * uss, -0.46 * uss, ca, sa)]);
-        dc.fillPolygon([rp(px, py, -3.2 * uss, 0.0, ca, sa), rp(px, py, -2.2 * uss, -0.18 * uss, ca, sa), rp(px, py, -2.2 * uss, 0.16 * uss, ca, sa), rp(px, py, -3.2 * uss, 0.22 * uss, ca, sa)]);
-        // high wing + strut
-        dc.setColor(0xB8C2D3, Graphics.COLOR_TRANSPARENT);
-        dc.fillPolygon([rp(px, py, -1.0 * uss, -0.66 * uss, ca, sa), rp(px, py, 2.3 * uss, -0.84 * uss, ca, sa), rp(px, py, 2.42 * uss, -0.58 * uss, ca, sa), rp(px, py, -0.9 * uss, -0.42 * uss, ca, sa)]);
-        dc.setColor(0x9AA6BA, Graphics.COLOR_TRANSPARENT);
-        dc.setPenWidth(maxw(uss * 0.08));
-        rln(dc, px, py, -0.2 * uss, -0.5 * uss, 0.5 * uss, 0.24 * uss, ca, sa);
-        // gear + wheels
-        dc.setColor(0x7E8AA0, Graphics.COLOR_TRANSPARENT);
-        dc.setPenWidth(maxw(uss * 0.1));
-        rln(dc, px, py, 0.4 * uss, 0.62 * uss, 0.4 * uss, 1.2 * uss, ca, sa);
-        rln(dc, px, py, -0.6 * uss, 0.62 * uss, -0.6 * uss, 1.2 * uss, ca, sa);
-        dc.setColor(0x15181F, Graphics.COLOR_TRANSPARENT);
-        var wa = rp(px, py, 0.4 * uss, 1.28 * uss, ca, sa);
-        var wb = rp(px, py, -0.6 * uss, 1.28 * uss, ca, sa);
-        dc.fillCircle(wa[0], wa[1], maxw(uss * 0.2));
-        dc.fillCircle(wb[0], wb[1], maxw(uss * 0.2));
+        limbW(dc, jp(px, py, -2.4, 0.22, U, ca, sa), jp(px, py, 2.5, 0.06, U, ca, sa), U * 0.16, 0x5B9BFF);
+        // tail fin
+        dc.setColor(0xDBE3F0, Graphics.COLOR_TRANSPARENT);
+        dc.fillPolygon([jp(px, py, -3.05, -0.4, U, ca, sa), jp(px, py, -2.55, -1.7, U, ca, sa), jp(px, py, -2.1, -1.7, U, ca, sa), jp(px, py, -2.25, -0.45, U, ca, sa)]);
+        // high wing
+        dc.fillPolygon([jp(px, py, -0.9, -0.62, U, ca, sa), jp(px, py, 2.25, -0.8, U, ca, sa), jp(px, py, 2.4, -0.55, U, ca, sa), jp(px, py, -0.8, -0.4, U, ca, sa)]);
+        // strut + gear
+        limbW(dc, jp(px, py, -0.1, -0.45, U, ca, sa), jp(px, py, 0.5, 0.22, U, ca, sa), U * 0.07, 0xAAB6C9);
+        limbW(dc, jp(px, py, 0.4, 0.6, U, ca, sa), jp(px, py, 0.4, 1.18, U, ca, sa), U * 0.09, 0x8E9BB2);
+        limbW(dc, jp(px, py, -0.6, 0.6, U, ca, sa), jp(px, py, -0.6, 1.18, U, ca, sa), U * 0.09, 0x8E9BB2);
+        dc.setColor(0x11192B, Graphics.COLOR_TRANSPARENT);
+        var w1 = jp(px, py, 0.4, 1.26, U, ca, sa);
+        var w2 = jp(px, py, -0.6, 1.26, U, ca, sa);
+        dc.fillCircle(w1[0], w1[1], maxw(U * 0.18));
+        dc.fillCircle(w2[0], w2[1], maxw(U * 0.18));
         // prop blades + hub
-        dc.setColor(0xDFE6F2, Graphics.COLOR_TRANSPARENT);
-        dc.setPenWidth(maxw(uss * 0.1));
-        var pa = mFrame * 0.9;
+        var pa = mFrame * 0.55;
         for (var b = 0; b < 3; b++) {
             var ang = pa + b * 2.094;
-            dc.drawLine(hub[0], hub[1], (hub[0] + Math.cos(ang) * uss * 1.2).toNumber(), (hub[1] + Math.sin(ang) * uss * 1.2).toNumber());
+            limbW(dc, hub, [(hub[0] + Math.cos(ang) * U * 1.2).toNumber(), (hub[1] + Math.sin(ang) * U * 1.2).toNumber()], U * 0.09, 0xEEF3FB);
         }
-        dc.fillCircle(hub[0], hub[1], maxw(uss * 0.13));
+        dc.setColor(0xEEF3FB, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(hub[0], hub[1], maxw(U * 0.13));
     }
 
-    function cloud(dc as Graphics.Dc, x as Float, y as Float, u as Float) as Void {
-        dc.setColor(0x1B2B45, Graphics.COLOR_TRANSPARENT);
-        dc.fillCircle(x.toNumber(), y.toNumber(), maxw(u * 0.95));
-        dc.fillCircle((x + u).toNumber(), (y + u * 0.1).toNumber(), maxw(u * 0.75));
-        dc.fillCircle((x - u * 0.9).toNumber(), (y + u * 0.15).toNumber(), maxw(u * 0.65));
-        dc.fillCircle((x + u * 0.2).toNumber(), (y - u * 0.45).toNumber(), maxw(u * 0.6));
-    }
-
-    // fleshed belly-to-earth jumper, centre fx,fy, rotated rot, scale s
-    function jumperFlying(dc as Graphics.Dc, fx as Float, fy as Float, u as Float, rot as Float, s as Float) as Void {
-        var ca = Math.cos(rot);
-        var sa = Math.sin(rot);
-        var uss = u * s;
-        var fl = Math.sin(mFrame * 0.4) * 0.12;
-        var limb = u * s * 0.42;
-        // rig on the back
-        dc.setColor(RIG, Graphics.COLOR_TRANSPARENT);
-        dc.fillPolygon([jp(fx, fy, -0.5, -0.8, uss, ca, sa), jp(fx, fy, 0.5, -0.8, uss, ca, sa), jp(fx, fy, 0.55, 0.6, uss, ca, sa), jp(fx, fy, -0.55, 0.6, uss, ca, sa)]);
-        // torso jumpsuit + shade
-        dc.setColor(SUIT, Graphics.COLOR_TRANSPARENT);
-        dc.fillPolygon([jp(fx, fy, -0.62, -0.9, uss, ca, sa), jp(fx, fy, 0.62, -0.9, uss, ca, sa), jp(fx, fy, 0.5, 0.7, uss, ca, sa), jp(fx, fy, -0.5, 0.7, uss, ca, sa)]);
-        dc.setColor(SUIT_D, Graphics.COLOR_TRANSPARENT);
-        dc.fillPolygon([jp(fx, fy, 0.05, -0.9, uss, ca, sa), jp(fx, fy, 0.62, -0.9, uss, ca, sa), jp(fx, fy, 0.5, 0.7, uss, ca, sa), jp(fx, fy, 0.05, 0.7, uss, ca, sa)]);
-        // arms
-        cap(dc, jp(fx, fy, -0.55, -0.72, uss, ca, sa), jp(fx, fy, -1.45, -1.0 - fl, uss, ca, sa), limb, SUIT);
-        cap(dc, jp(fx, fy, -1.45, -1.0 - fl, uss, ca, sa), jp(fx, fy, -1.75, -1.95 - fl, uss, ca, sa), limb * 0.85, SUIT);
-        cap(dc, jp(fx, fy, 0.55, -0.72, uss, ca, sa), jp(fx, fy, 1.45, -1.0 + fl, uss, ca, sa), limb, SUIT);
-        cap(dc, jp(fx, fy, 1.45, -1.0 + fl, uss, ca, sa), jp(fx, fy, 1.75, -1.95 + fl, uss, ca, sa), limb * 0.85, SUIT);
-        dc.setColor(DARK, Graphics.COLOR_TRANSPARENT);
-        var gl = jp(fx, fy, -1.75, -1.95 - fl, uss, ca, sa);
-        var gr = jp(fx, fy, 1.75, -1.95 + fl, uss, ca, sa);
-        dc.fillCircle(gl[0], gl[1], maxw(limb * 0.5));
-        dc.fillCircle(gr[0], gr[1], maxw(limb * 0.5));
-        // legs
-        cap(dc, jp(fx, fy, -0.45, 0.6, uss, ca, sa), jp(fx, fy, -1.2, 1.55 + fl, uss, ca, sa), limb, SUIT);
-        cap(dc, jp(fx, fy, -1.2, 1.55 + fl, uss, ca, sa), jp(fx, fy, -0.72, 2.5 + fl, uss, ca, sa), limb * 0.85, SUIT);
-        cap(dc, jp(fx, fy, 0.45, 0.6, uss, ca, sa), jp(fx, fy, 1.2, 1.55 - fl, uss, ca, sa), limb, SUIT);
-        cap(dc, jp(fx, fy, 1.2, 1.55 - fl, uss, ca, sa), jp(fx, fy, 0.72, 2.5 - fl, uss, ca, sa), limb * 0.85, SUIT);
-        dc.setColor(DARK, Graphics.COLOR_TRANSPARENT);
-        var bl = jp(fx, fy, -0.72, 2.5 + fl, uss, ca, sa);
-        var br = jp(fx, fy, 0.72, 2.5 - fl, uss, ca, sa);
-        dc.fillCircle(bl[0], bl[1], maxw(limb * 0.55));
-        dc.fillCircle(br[0], br[1], maxw(limb * 0.55));
-        // helmet + sheen + visor
-        var head = jp(fx, fy, 0.0, -1.45, uss, ca, sa);
-        dc.setColor(HELM, Graphics.COLOR_TRANSPARENT);
-        dc.fillCircle(head[0], head[1], maxw(uss * 0.52));
-        dc.setColor(HELM_HI, Graphics.COLOR_TRANSPARENT);
-        var sheen = jp(fx, fy, -0.18, -1.6, uss, ca, sa);
-        dc.fillCircle(sheen[0], sheen[1], maxw(uss * 0.2));
-        dc.setColor(VISOR, Graphics.COLOR_TRANSPARENT);
-        var vis = jp(fx, fy, 0.0, -1.55, uss, ca, sa);
-        dc.fillEllipse(vis[0], vis[1], maxw(uss * 0.34), maxw(uss * 0.2));
+    function softCloud(dc as Graphics.Dc, x as Float, y as Float, r as Float) as Void {
+        dc.setColor(0x1A2740, Graphics.COLOR_TRANSPARENT);
+        dc.fillCircle(x.toNumber(), y.toNumber(), maxw(r));
+        dc.fillCircle((x + r).toNumber(), (y + r * 0.15).toNumber(), maxw(r * 0.75));
+        dc.fillCircle((x - r * 0.9).toNumber(), (y + r * 0.2).toNumber(), maxw(r * 0.62));
+        dc.fillCircle((x + r * 0.25).toNumber(), (y - r * 0.4).toNumber(), maxw(r * 0.6));
     }
 
     function sceneClimb(dc as Graphics.Dc, cx as Float, cy as Float, u as Float) as Void {
-        var bob = Math.sin(mFrame * 0.06) * (u * 0.18);
-        var drift = Math.sin(mFrame * 0.03) * (u * 0.6);
-        var span = (cx * 2 + u * 4).toNumber();
-        cloud(dc, ((mFrame * 7 / 10) % span) - u * 2, cy + u * 2.6, u);
-        cloud(dc, ((mFrame * 4 / 10 + (span * 55 / 100)) % span) - u * 2, cy + u * 3.6, u * 0.8);
-        var px = cx + drift;
-        var py = cy + bob;
-        var a = -0.30;
-        var ca = Math.cos(a);
-        var sa = Math.sin(a);
-        dc.setColor(0x355479, Graphics.COLOR_TRANSPARENT);
-        for (var i = 1; i <= 6; i++) {
-            var q = rp(px, py, (-3.3 - i * 0.7) * u, 0.12 * u, ca, sa);
-            dc.fillCircle(q[0], q[1], maxw(u * 0.09));
-        }
-        plane(dc, px, py, u, ca, sa, 1.0);
-        // open door + jumper in the doorway
-        dc.setColor(0x0A1426, Graphics.COLOR_TRANSPARENT);
-        dc.fillPolygon([rp(px, py, -1.8 * u, -0.35 * u, ca, sa), rp(px, py, -0.85 * u, -0.4 * u, ca, sa), rp(px, py, -0.85 * u, 0.5 * u, ca, sa), rp(px, py, -1.8 * u, 0.55 * u, ca, sa)]);
-        dc.setColor(SUIT, Graphics.COLOR_TRANSPARENT);
-        var j = rp(px, py, -1.3 * u, 0.06 * u, ca, sa);
-        dc.fillCircle(j[0], j[1], maxw(u * 0.26));
-        dc.setColor(HELM, Graphics.COLOR_TRANSPARENT);
-        var jh = rp(px, py, -1.05 * u, -0.28 * u, ca, sa);
-        dc.fillCircle(jh[0], jh[1], maxw(u * 0.17));
+        var ay = cy + u * 0.6;
+        var span = (cx * 2 + u * 4);
+        softCloud(dc, ((mFrame * 13 / 10) % span.toNumber()) - u * 2, ay + u * 1.6, u * 1.1);
+        softCloud(dc, ((mFrame * 8 / 10 + (span * 0.5).toNumber()) % span.toNumber()) - u * 2, ay + u * 2.6, u * 0.85);
+        var bob = Math.sin(mFrame * 0.13) * (u * 0.22);
+        plane(dc, cx + Math.sin(mFrame * 0.05) * (u * 0.5), ay + bob, -0.26, 1.05);
+    }
+
+    // belly-to-earth stick figure (arched box). flutter scales limb wobble.
+    function stickFly(dc as Graphics.Dc, fx as Float, fy as Float, U as Float, rot as Float, visor as Number, flutter as Float) as Void {
+        var ca = Math.cos(rot);
+        var sa = Math.sin(rot);
+        var fl = Math.sin(mFrame * 0.33) * 0.13 * flutter;
+        var w = U * 0.5;
+        var w2 = U * 0.4;
+        // torso
+        limbW(dc, jp(fx, fy, 0.0, -0.85, U, ca, sa), jp(fx, fy, 0.05, 0.7, U, ca, sa), w, INK);
+        // arms
+        limb3W(dc, jp(fx, fy, 0.0, -0.7, U, ca, sa), jp(fx, fy, -1.05, -0.95 - fl, U, ca, sa), jp(fx, fy, -1.55, -1.75 - fl, U, ca, sa), w2, INK);
+        limb3W(dc, jp(fx, fy, 0.0, -0.7, U, ca, sa), jp(fx, fy, 1.05, -0.95 + fl, U, ca, sa), jp(fx, fy, 1.55, -1.75 + fl, U, ca, sa), w2, INK);
+        // legs
+        limb3W(dc, jp(fx, fy, 0.05, 0.65, U, ca, sa), jp(fx, fy, -0.95, 1.5 + fl, U, ca, sa), jp(fx, fy, -0.6, 2.4 + fl, U, ca, sa), w2, INK);
+        limb3W(dc, jp(fx, fy, 0.05, 0.65, U, ca, sa), jp(fx, fy, 0.95, 1.5 - fl, U, ca, sa), jp(fx, fy, 0.6, 2.4 - fl, U, ca, sa), w2, INK);
+        // head + visor
+        var hd = jp(fx, fy, 0.0, -1.4, U, ca, sa);
+        headV(dc, hd[0], hd[1], maxw(U * 0.5), 1.5708 + rot, visor);
     }
 
     function sceneExit(dc as Graphics.Dc, cx as Float, cy as Float, u as Float) as Void {
-        var a = -0.18;
-        var ca = Math.cos(a);
-        var sa = Math.sin(a);
-        var px = cx - 3.5 * u + Math.sin(mFrame * 0.04) * (u * 0.2);
-        var py = cy - 3.1 * u;
-        plane(dc, px, py, u, ca, sa, 0.6);
-        dc.setColor(0x0A1426, Graphics.COLOR_TRANSPARENT);
-        var ss = 0.6;
-        dc.fillPolygon([rp(px, py, -1.8 * u * ss, -0.35 * u * ss, ca, sa), rp(px, py, -0.85 * u * ss, -0.4 * u * ss, ca, sa), rp(px, py, -0.85 * u * ss, 0.5 * u * ss, ca, sa), rp(px, py, -1.8 * u * ss, 0.55 * u * ss, ca, sa)]);
-        // dashed separation arc (door -> jumper)
-        dc.setColor(0x7A571E, Graphics.COLOR_TRANSPARENT);
-        var ax = px + 0.6 * u;
-        var ay = py + 1.0 * u;
-        var bx = cx + 0.2 * u;
-        var by = cy + 0.4 * u;
-        var qx = cx - 1.2 * u;
-        var qy = cy - 0.6 * u;
-        for (var k = 0; k <= 8; k++) {
-            if (k % 2 == 0) {
-                var t = k / 8.0;
-                dc.fillCircle(qbx(ax, qx, bx, t).toNumber(), qby(ay, qy, by, t).toNumber(), maxw(u * 0.07));
-            }
-        }
-        // relative-wind streaks
-        dc.setColor(0x3A5170, Graphics.COLOR_TRANSPARENT);
-        dc.setPenWidth(maxw(u * 0.1));
-        var woff = (mFrame % maxw(u)).toFloat();
-        for (var i = 0; i < 4; i++) {
-            var yy = cy + 1.9 * u + i * 0.5 * u;
-            ln(dc, cx + 2.0 * u - woff, yy, cx + 1.1 * u - woff, yy - 0.4 * u);
-        }
-        // fleshed jumper diving away, rolling into the arch
-        var rot = -0.8 + Math.sin(mFrame * 0.16) * 0.45;
-        jumperFlying(dc, cx + 0.3 * u, cy + 0.5 * u, u, rot, 0.95);
+        var loop = (mFrame % 200) / 200.0;
+        var e = 0.5 - 0.5 * Math.cos(loop * 3.14159);
+        var ps = 0.56 - loop * 0.10;
+        plane(dc, cx - 3.0 * u - loop * 1.6 * u, cy - 3.0 * u - loop * 0.5 * u, -0.16, ps);
+        var jx = cx - 1.4 * u + (cx + 0.8 * u - (cx - 1.4 * u)) * e;
+        var jy = cy - 1.1 * u + (cy + 1.2 * u - (cy - 1.1 * u)) * e;
+        var rot = -1.5 + 1.5 * e;
+        stickFly(dc, jx, jy, u * 0.95, rot, 0xFFAE46, 0.0);
     }
 
     function sceneFreefall(dc as Graphics.Dc, cx as Float, cy as Float, u as Float, h as Number) as Void {
         var span = (h * 62 / 100);
         dc.setPenWidth(maxw(u * 0.1));
-        for (var i = 0; i < 10; i++) {
-            var sx = cx + ((i - 4) * 0.9 - 0.45) * u;
-            var off = ((mFrame * 12 + i * 51) % span);
+        for (var i = 0; i < 11; i++) {
+            var sx = cx + ((i - 5) * 0.88) * u;
+            var off = ((mFrame * 9 + i * 47) % span);
             var sy = cy + 2.6 * u - off;
-            dc.setColor(off < span * 0.5 ? 0x6080AA : 0x33455F, Graphics.COLOR_TRANSPARENT);
+            dc.setColor(off < span * 0.5 ? 0x6E8FBE : 0x3A4E6B, Graphics.COLOR_TRANSPARENT);
             ln(dc, sx, sy, sx, sy - 1.1 * u);
         }
-        var bob = Math.sin(mFrame * 0.25) * (u * 0.1);
-        var yaw = Math.sin(mFrame * 0.12) * 0.07;
-        jumperFlying(dc, cx, cy + bob, u, yaw, 1.12);
+        var bob = Math.sin(mFrame * 0.11) * (u * 0.12);
+        stickFly(dc, cx, cy + bob, u * 1.12, Math.sin(mFrame * 0.06) * 0.06, 0xFF5D7A, 1.0);
     }
 
     function sceneCanopy(dc as Graphics.Dc, cx as Float, cy as Float, u as Float) as Void {
-        var sway = Math.sin(mFrame * 0.07) * 0.15;
+        var sway = Math.sin(mFrame * 0.075) * 0.16;
         var ca = Math.cos(sway);
         var sa = Math.sin(sway);
         var ax = cx;
-        var ay = cy + 1.4 * u;
-        var halfW = 2.8;
-        var depth = 0.66;
-        var arc = 1.0;
-        var wy = -3.4;
+        var ay = cy + 1.1 * u;
+        var halfW = 2.9;
+        var depth = 0.62;
+        var arc = 0.95;
+        var wy = -3.5;
         var N = 9;
         var top = [];
         var bot = [];
         for (var i = 0; i <= N; i++) {
-            var t = (i.toFloat() / N) * 2 - 1;
-            var x = t * halfW;
-            var sag = arc * (1 - t * t);
-            top.add(rp(ax, ay, x * u, (wy - sag - depth) * u, ca, sa));
-            bot.add(rp(ax, ay, x * u, (wy - sag) * u, ca, sa));
+            var uu = (i.toFloat() / N) * 2 - 1;
+            var x = uu * halfW;
+            var sag = arc * (1 - uu * uu);
+            top.add(jp(ax, ay, x, wy - sag - depth, u, ca, sa));
+            bot.add(jp(ax, ay, x, wy - sag, u, ca, sa));
         }
-        // cells with alternating shade
-        for (var i = 0; i < N; i++) {
-            dc.setColor((i % 2 == 1) ? 0x0FBF7C : 0x14E093, Graphics.COLOR_TRANSPARENT);
-            dc.fillPolygon([top[i], top[i + 1], bot[i + 1], bot[i]]);
-        }
-        // leading-edge openings (nose notches)
-        dc.setColor(0x05281B, Graphics.COLOR_TRANSPARENT);
+        // canopy fill
+        var wing = [];
+        for (var i = 0; i <= N; i++) { wing.add(top[i]); }
+        for (var i = N; i >= 0; i--) { wing.add(bot[i]); }
+        dc.setColor(0x14E093, Graphics.COLOR_TRANSPARENT);
+        dc.fillPolygon(wing);
+        // ribs
+        dc.setColor(0x05311F, Graphics.COLOR_TRANSPARENT);
+        dc.setPenWidth(maxw(u * 0.06));
+        for (var i = 0; i <= N; i++) { dc.drawLine(top[i][0], top[i][1], bot[i][0], bot[i][1]); }
+        // nose openings
+        dc.setColor(0x04281B, Graphics.COLOR_TRANSPARENT);
         for (var i = 0; i < N; i++) {
             var mx = (bot[i][0] + bot[i + 1][0]) / 2;
             var my = (bot[i][1] + bot[i + 1][1]) / 2;
-            dc.fillPolygon([[(mx - u * 0.12).toNumber(), (my + u * 0.02).toNumber()], [(mx + u * 0.12).toNumber(), (my + u * 0.02).toNumber()], [(mx + u * 0.08).toNumber(), (my + u * 0.22).toNumber()], [(mx - u * 0.08).toNumber(), (my + u * 0.22).toNumber()]]);
+            dc.fillCircle(mx, (my + u * 0.12).toNumber(), maxw(u * 0.1));
         }
-        // cell ribs
-        dc.setColor(0x064B33, Graphics.COLOR_TRANSPARENT);
-        dc.setPenWidth(maxw(u * 0.05));
-        for (var i = 0; i <= N; i++) { dc.drawLine(top[i][0], top[i][1], bot[i][0], bot[i][1]); }
-        // suspension lines to risers
-        var riserL = rp(ax, ay, -0.45 * u, -0.1 * u, ca, sa);
-        var riserR = rp(ax, ay, 0.45 * u, -0.1 * u, ca, sa);
-        dc.setColor(0xD2DCEB, Graphics.COLOR_TRANSPARENT);
+        // lines + slider
+        var riserL = jp(ax, ay, -0.42, -0.1, u, ca, sa);
+        var riserR = jp(ax, ay, 0.42, -0.1, u, ca, sa);
+        dc.setColor(0xDCE6F5, Graphics.COLOR_TRANSPARENT);
         dc.setPenWidth(1);
         for (var i = 0; i <= N; i++) {
             var tgt = (i <= N / 2) ? riserL : riserR;
             dc.drawLine(bot[i][0], bot[i][1], tgt[0], tgt[1]);
         }
-        // slider
-        dc.setColor(0x282E3A, Graphics.COLOR_TRANSPARENT);
-        var sl = rp(ax, ay, 0.0, -1.4 * u, ca, sa);
-        dc.fillPolygon([rp(sl[0], sl[1], -1.3 * u, -0.12 * u, ca, sa), rp(sl[0], sl[1], 1.3 * u, -0.12 * u, ca, sa), rp(sl[0], sl[1], 1.3 * u, 0.12 * u, ca, sa), rp(sl[0], sl[1], -1.3 * u, 0.12 * u, ca, sa)]);
-        // jumper in harness
-        var uss = u;
-        var limb = u * 0.4;
-        cap(dc, rp(ax, ay, -0.18 * u, 1.5 * u, ca, sa), rp(ax, ay, -0.4 * u, 2.5 * u, ca, sa), limb, SUIT);
-        cap(dc, rp(ax, ay, -0.4 * u, 2.5 * u, ca, sa), rp(ax, ay, -0.3 * u, 3.2 * u, ca, sa), limb * 0.85, SUIT);
-        cap(dc, rp(ax, ay, 0.18 * u, 1.5 * u, ca, sa), rp(ax, ay, 0.4 * u, 2.5 * u, ca, sa), limb, SUIT);
-        cap(dc, rp(ax, ay, 0.4 * u, 2.5 * u, ca, sa), rp(ax, ay, 0.5 * u, 3.2 * u, ca, sa), limb * 0.85, SUIT);
-        dc.setColor(DARK, Graphics.COLOR_TRANSPARENT);
-        var bl = rp(ax, ay, -0.3 * u, 3.2 * u, ca, sa);
-        var br = rp(ax, ay, 0.5 * u, 3.2 * u, ca, sa);
-        dc.fillCircle(bl[0], bl[1], maxw(limb * 0.55));
-        dc.fillCircle(br[0], br[1], maxw(limb * 0.55));
-        dc.setColor(SUIT, Graphics.COLOR_TRANSPARENT);
-        dc.fillPolygon([rp(ax, ay, -0.55 * u, 0.55 * u, ca, sa), rp(ax, ay, 0.55 * u, 0.55 * u, ca, sa), rp(ax, ay, 0.45 * u, 1.7 * u, ca, sa), rp(ax, ay, -0.45 * u, 1.7 * u, ca, sa)]);
-        // arms up to toggles
-        cap(dc, rp(ax, ay, -0.5 * u, 0.7 * u, ca, sa), riserL, limb * 0.9, SUIT);
-        cap(dc, rp(ax, ay, 0.5 * u, 0.7 * u, ca, sa), riserR, limb * 0.9, SUIT);
-        // head + visor
-        var head = rp(ax, ay, 0.0, 0.2 * u, ca, sa);
-        dc.setColor(HELM, Graphics.COLOR_TRANSPARENT);
-        dc.fillCircle(head[0], head[1], maxw(u * 0.42));
-        dc.setColor(VISOR, Graphics.COLOR_TRANSPARENT);
-        var vis = rp(ax, ay, 0.0, 0.12 * u, ca, sa);
-        dc.fillEllipse(vis[0], vis[1], maxw(u * 0.3), maxw(u * 0.16));
+        dc.setColor(0x282E40, Graphics.COLOR_TRANSPARENT);
+        var sl = jp(ax, ay, 0.0, -1.5, u, ca, sa);
+        dc.fillPolygon([jp(sl[0], sl[1], -1.2 * u, -0.1 * u, 1.0, ca, sa), jp(sl[0], sl[1], 1.2 * u, -0.1 * u, 1.0, ca, sa), jp(sl[0], sl[1], 1.2 * u, 0.1 * u, 1.0, ca, sa), jp(sl[0], sl[1], -1.2 * u, 0.1 * u, 1.0, ca, sa)]);
+        // jumper
+        var w = u * 0.5;
+        var w2 = u * 0.4;
+        limbW(dc, jp(ax, ay, 0.0, 0.55, u, ca, sa), jp(ax, ay, 0.0, 1.8, u, ca, sa), w, INK);
+        limbW(dc, jp(ax, ay, 0.0, 0.75, u, ca, sa), riserL, w2, INK);
+        limbW(dc, jp(ax, ay, 0.0, 0.75, u, ca, sa), riserR, w2, INK);
+        limb3W(dc, jp(ax, ay, 0.0, 1.78, u, ca, sa), jp(ax, ay, -0.3, 2.6, u, ca, sa), jp(ax, ay, -0.25, 3.2, u, ca, sa), w2, INK);
+        limb3W(dc, jp(ax, ay, 0.0, 1.78, u, ca, sa), jp(ax, ay, 0.3, 2.6, u, ca, sa), jp(ax, ay, 0.32, 3.2, u, ca, sa), w2, INK);
+        var hd = jp(ax, ay, 0.0, 0.25, u, ca, sa);
+        headV(dc, hd[0], hd[1], maxw(u * 0.42), -1.5708 + sway, 0x1FE39A);
     }
 
     function sceneLanded(dc as Graphics.Dc, cx as Float, cy as Float, u as Float) as Void {
         var gy = cy + 2.3 * u;
-        // ground band
-        dc.setColor(0x2C3A22, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(0x1B2912, Graphics.COLOR_TRANSPARENT);
         dc.fillRectangle(0, gy.toNumber(), (cx * 2).toNumber(), (cy * 3).toNumber());
-        dc.setColor(0x4A6234, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(0x3F5A30, Graphics.COLOR_TRANSPARENT);
         dc.setPenWidth(maxw(u * 0.12));
         ln(dc, 0.0, gy, cx * 2, gy);
-        dc.setColor(0x3C5530, Graphics.COLOR_TRANSPARENT);
+        dc.setColor(0x33502A, Graphics.COLOR_TRANSPARENT);
         dc.setPenWidth(maxw(u * 0.08));
         for (var i = -3; i <= 3; i++) {
             var gx = cx + i * 1.0 * u;
             ln(dc, gx, gy, gx - u * 0.12, gy - u * 0.4);
             ln(dc, gx, gy, gx + u * 0.12, gy - u * 0.4);
         }
-        // deflated ram-air canopy crumpled behind
-        dc.setColor(0x0FBF7C, Graphics.COLOR_TRANSPARENT);
-        dc.fillPolygon([pt(cx + 0.6 * u, gy), pt(cx + 1.2 * u, gy - 0.6 * u), pt(cx + 1.8 * u, gy - 0.25 * u), pt(cx + 2.4 * u, gy - 0.65 * u), pt(cx + 3.0 * u, gy - 0.2 * u), pt(cx + 3.4 * u, gy)]);
-        dc.setColor(0x8893A8, Graphics.COLOR_TRANSPARENT);
+        // collapsed canopy behind
+        dc.setColor(0x0DB97C, Graphics.COLOR_TRANSPARENT);
+        dc.fillPolygon([pt(cx + 0.6 * u, gy), pt(cx + 1.2 * u, gy - 0.6 * u), pt(cx + 1.8 * u, gy - 0.22 * u), pt(cx + 2.4 * u, gy - 0.62 * u), pt(cx + 3.0 * u, gy - 0.18 * u), pt(cx + 3.4 * u, gy)]);
+        dc.setColor(0xDCE6F5, Graphics.COLOR_TRANSPARENT);
         dc.setPenWidth(1);
-        ln(dc, cx + 1.2 * u, gy - 0.45 * u, cx - 0.7 * u, gy - 1.05 * u);
-        ln(dc, cx + 2.0 * u, gy - 0.4 * u, cx - 0.55 * u, gy - 1.05 * u);
-        // standing fleshed jumper (left)
-        var sgn = Math.sin(mFrame * 0.06) * (u * 0.04);
-        var fx = cx - 1.5 * u + sgn;
-        var limb = u * 0.42;
-        cap(dc, [(fx - 0.05 * u).toNumber(), (gy - 1.5 * u).toNumber()], [(fx - 0.3 * u).toNumber(), (gy - 0.75 * u).toNumber()], limb, SUIT);
-        cap(dc, [(fx - 0.3 * u).toNumber(), (gy - 0.75 * u).toNumber()], [(fx - 0.32 * u).toNumber(), gy.toNumber()], limb * 0.9, SUIT);
-        cap(dc, [(fx + 0.05 * u).toNumber(), (gy - 1.5 * u).toNumber()], [(fx + 0.3 * u).toNumber(), (gy - 0.75 * u).toNumber()], limb, SUIT);
-        cap(dc, [(fx + 0.3 * u).toNumber(), (gy - 0.75 * u).toNumber()], [(fx + 0.32 * u).toNumber(), gy.toNumber()], limb * 0.9, SUIT);
-        dc.setColor(DARK, Graphics.COLOR_TRANSPARENT);
-        dc.fillCircle((fx - 0.32 * u).toNumber(), gy.toNumber(), maxw(limb * 0.5));
-        dc.fillCircle((fx + 0.32 * u).toNumber(), gy.toNumber(), maxw(limb * 0.5));
-        // torso + rig
-        dc.setColor(SUIT, Graphics.COLOR_TRANSPARENT);
-        dc.fillPolygon([pt(fx - 0.5 * u, gy - 2.3 * u), pt(fx + 0.5 * u, gy - 2.3 * u), pt(fx + 0.42 * u, gy - 1.45 * u), pt(fx - 0.42 * u, gy - 1.45 * u)]);
-        dc.setColor(RIG, Graphics.COLOR_TRANSPARENT);
-        dc.fillPolygon([pt(fx - 0.5 * u, gy - 2.25 * u), pt(fx - 0.72 * u, gy - 2.2 * u), pt(fx - 0.7 * u, gy - 1.5 * u), pt(fx - 0.45 * u, gy - 1.55 * u)]);
-        // arms
-        cap(dc, [(fx - 0.4 * u).toNumber(), (gy - 2.15 * u).toNumber()], [(fx - 0.7 * u).toNumber(), (gy - 1.6 * u).toNumber()], limb * 0.9, SUIT);
-        cap(dc, [(fx - 0.7 * u).toNumber(), (gy - 1.6 * u).toNumber()], [(fx - 0.78 * u).toNumber(), (gy - 1.05 * u).toNumber()], limb * 0.8, SUIT);
-        cap(dc, [(fx + 0.4 * u).toNumber(), (gy - 2.15 * u).toNumber()], [(fx + 0.7 * u).toNumber(), (gy - 1.6 * u).toNumber()], limb * 0.9, SUIT);
-        cap(dc, [(fx + 0.7 * u).toNumber(), (gy - 1.6 * u).toNumber()], [(fx + 0.78 * u).toNumber(), (gy - 1.05 * u).toNumber()], limb * 0.8, SUIT);
-        // head + helmet + visor
-        dc.setColor(HELM, Graphics.COLOR_TRANSPARENT);
-        dc.fillCircle(fx.toNumber(), (gy - 2.7 * u).toNumber(), maxw(u * 0.42));
-        dc.setColor(VISOR, Graphics.COLOR_TRANSPARENT);
-        dc.fillEllipse(fx.toNumber(), (gy - 2.74 * u).toNumber(), maxw(u * 0.3), maxw(u * 0.16));
+        ln(dc, cx + 1.2 * u, gy - 0.45 * u, cx - 0.6 * u, gy - 1.1 * u);
+        ln(dc, cx + 2.0 * u, gy - 0.4 * u, cx - 0.45 * u, gy - 1.1 * u);
+        // standing stickman
+        var sgn = Math.sin(mFrame * 0.05) * 0.04;
+        var fx = cx - 1.5 * u;
+        var w = u * 0.5;
+        var w2 = u * 0.4;
+        limb3W(dc, [(fx - 0.05 * u).toNumber(), (gy - 1.45 * u).toNumber()], [(fx - 0.28 * u).toNumber(), (gy - 0.72 * u).toNumber()], [(fx - 0.3 * u).toNumber(), gy.toNumber()], w2, INK);
+        limb3W(dc, [(fx + 0.05 * u).toNumber(), (gy - 1.45 * u).toNumber()], [(fx + 0.28 * u).toNumber(), (gy - 0.72 * u).toNumber()], [(fx + 0.3 * u).toNumber(), gy.toNumber()], w2, INK);
+        var topp = [(fx + sgn * u).toNumber(), (gy - 2.3 * u).toNumber()];
+        limbW(dc, topp, [fx.toNumber(), (gy - 1.4 * u).toNumber()], w, INK);
+        limb3W(dc, [(fx + sgn * 0.6 * u).toNumber(), (gy - 2.1 * u).toNumber()], [(fx - 0.5 * u).toNumber(), (gy - 1.7 * u).toNumber()], [(fx - 0.6 * u).toNumber(), (gy - 1.1 * u).toNumber()], w2, INK);
+        limb3W(dc, [(fx + sgn * 0.6 * u).toNumber(), (gy - 2.1 * u).toNumber()], [(fx + 0.5 * u).toNumber(), (gy - 1.7 * u).toNumber()], [(fx + 0.6 * u).toNumber(), (gy - 1.1 * u).toNumber()], w2, INK);
+        headV(dc, topp[0], (gy - 2.7 * u).toNumber(), maxw(u * 0.42), -1.5708, 0xAEB8CF);
     }
-
     // ---------------------------------------------------------- draw helpers
     function ln(dc as Graphics.Dc, x1 as Float, y1 as Float, x2 as Float, y2 as Float) as Void {
         dc.drawLine(x1.toNumber(), y1.toNumber(), x2.toNumber(), y2.toNumber());
