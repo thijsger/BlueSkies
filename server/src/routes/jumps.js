@@ -108,6 +108,10 @@ router.get("/stats", (_req, res) => {
   const perMonth = {}; // "YYYY-MM" -> count
   const exitBuckets = {}; // altitude bucket -> count
   let freefallAccrual = []; // [{date, cumSec}]
+  const byDropzone = {}; // dropzone -> count
+  const byType = {}; // jumpType -> count
+  let exitSum = 0;
+  let exitCount = 0;
 
   const sorted = [...jumps].sort(
     (a, b) => new Date(a.startTime) - new Date(b.startTime)
@@ -131,18 +135,37 @@ router.get("/stats", (_req, res) => {
     if (exit != null) {
       const bucket = `${Math.floor(exit / 500) * 500}`;
       exitBuckets[bucket] = (exitBuckets[bucket] || 0) + 1;
+      exitSum += exit;
+      exitCount += 1;
     }
+
+    const dz = j.dropzone || "Onbekend";
+    byDropzone[dz] = (byDropzone[dz] || 0) + 1;
+    const tp = j.jumpType || "onbekend";
+    byType[tp] = (byType[tp] || 0) + 1;
   }
+
+  // currency: days since most recent jump (jumps list is newest-first)
+  const lastJumpDate = n ? jumps[0].startTime : null;
+  const daysSinceLast = lastJumpDate
+    ? Math.floor((Date.now() - new Date(lastJumpDate).getTime()) / 86400000)
+    : null;
 
   res.json({
     totalJumps: n,
     totalFreefallSec: Math.round(totalFreefall),
     totalCanopySec: Math.round(totalCanopy),
+    avgFreefallSec: n ? Math.round(totalFreefall / n) : null,
+    avgExit: exitCount ? Math.round(exitSum / exitCount) : null,
     highestExit,
     longestFreefall,
+    lastJumpDate,
+    daysSinceLast,
     perMonth,
     exitBuckets,
     freefallAccrual,
+    byDropzone,
+    byType,
   });
 });
 

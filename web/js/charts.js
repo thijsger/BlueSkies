@@ -301,6 +301,44 @@ export function freefallAccrualChart(canvas, accrual) {
   });
 }
 
+const CAT_PALETTE = ["#5b8cff", "#9b6bff", "#10d68a", "#f6a23b", "#f43f6e", "#36c5f0", "#ffd166"];
+
+export function byTypeChart(canvas, byType) {
+  const labels = Object.keys(byType).sort((a, b) => byType[b] - byType[a]);
+  return new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels: labels.map((l) => l.charAt(0).toUpperCase() + l.slice(1)),
+      datasets: [{ data: labels.map((l) => byType[l]), backgroundColor: labels.map((_, i) => hexA(CAT_PALETTE[i % CAT_PALETTE.length], 0.8)), borderRadius: 6, maxBarThickness: 42 }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { tooltip: { callbacks: { label: (i) => `${i.parsed.y} sprongen` } } },
+      scales: {
+        x: { ticks: { color: "#5d6a87" }, grid: { display: false }, border: { color: "rgba(255,255,255,0.08)" } },
+        y: { ticks: { color: "#5d6a87", precision: 0 }, grid: { color: "rgba(255,255,255,0.04)" }, beginAtZero: true, border: { display: false } },
+      },
+    },
+  });
+}
+
+export function byDropzoneChart(canvas, byDz) {
+  const labels = Object.keys(byDz).sort((a, b) => byDz[b] - byDz[a]).slice(0, 8);
+  return new Chart(canvas, {
+    type: "bar",
+    data: { labels, datasets: [{ data: labels.map((l) => byDz[l]), backgroundColor: hexA("#10d68a", 0.78), borderRadius: 6, maxBarThickness: 26 }] },
+    options: {
+      indexAxis: "y",
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { tooltip: { callbacks: { label: (i) => `${i.parsed.x} sprongen` } } },
+      scales: {
+        x: { ticks: { color: "#5d6a87", precision: 0 }, grid: { color: "rgba(255,255,255,0.04)" }, beginAtZero: true, border: { display: false } },
+        y: { ticks: { color: "#8b97b3" }, grid: { display: false }, border: { color: "rgba(255,255,255,0.08)" } },
+      },
+    },
+  });
+}
+
 export function exitDistributionChart(canvas, buckets) {
   const keys = Object.keys(buckets).map(Number).sort((a, b) => a - b);
   return new Chart(canvas, {

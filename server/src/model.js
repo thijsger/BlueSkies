@@ -337,6 +337,30 @@ function buildSummary(series, phases, smoothAlt) {
       ? round(haversine(exitPoint.lat, exitPoint.lng, landingPoint.lat, landingPoint.lng), 0)
       : null;
 
+  // tracking / wingsuit performance: horizontal motion during freefall.
+  // glide ratio = horizontal displacement / vertical drop over the freefall.
+  let glideRatio = null;
+  let ffAvgHorizontalSpeed = null;
+  let ffPeakHorizontalSpeed = null;
+  let ffHorizontalDistance = null;
+  const ffGps = ff.filter((s) => s.lat != null && s.lng != null);
+  if (ffGps.length >= 2) {
+    let path = 0;
+    for (let i = 1; i < ffGps.length; i++) {
+      const d = haversine(ffGps[i - 1].lat, ffGps[i - 1].lng, ffGps[i].lat, ffGps[i].lng);
+      if (d != null) path += d;
+    }
+    const net = haversine(ffGps[0].lat, ffGps[0].lng, ffGps[ffGps.length - 1].lat, ffGps[ffGps.length - 1].lng);
+    const aTop = ffGps[0].alt;
+    const aBot = ffGps[ffGps.length - 1].alt;
+    const vDrop = aTop != null && aBot != null ? aTop - aBot : null;
+    if (net != null) ffHorizontalDistance = round(net, 0);
+    if (vDrop && vDrop > 0 && net != null) glideRatio = round(net / vDrop, 2);
+    if (freefallTime > 0) ffAvgHorizontalSpeed = round(path / freefallTime, 1);
+    const ffGspeeds = ff.map((s) => s.groundSpeed).filter((x) => x != null);
+    ffPeakHorizontalSpeed = ffGspeeds.length ? round(Math.max(...ffGspeeds), 1) : null;
+  }
+
   // data quality flag for honest UI labelling
   let dataQuality = "ok";
   if (!ff.length) dataQuality = "no-freefall-detected";
@@ -355,6 +379,10 @@ function buildSummary(series, phases, smoothAlt) {
     horizontalDrift,
     distanceToTarget: null, // filled when a target is set (see routes)
     maxGroundSpeed,
+    glideRatio,
+    ffAvgHorizontalSpeed,
+    ffPeakHorizontalSpeed,
+    ffHorizontalDistance,
     dataQuality,
   };
 }

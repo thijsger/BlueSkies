@@ -3,11 +3,12 @@ import { el, toast, fmtDuration, fmtDate, num } from "./util.js";
 import { icon } from "./icons.js";
 import {
   MetricCard, JumpPhaseTimeline, ChartCard, JumpHeader, EmptyState,
-  EditJumpForm, StatsOverview, capitalize,
+  EditJumpForm, StatsOverview, TrackingPanel, shouldShowTracking, capitalize,
 } from "./components.js";
 import {
   altitudeChart, verticalSpeedChart, heartRateChart, groundSpeedChart, combinedChart,
-  jumpsPerMonthChart, freefallAccrualChart, exitDistributionChart, hasValues,
+  jumpsPerMonthChart, freefallAccrualChart, exitDistributionChart,
+  byTypeChart, byDropzoneChart, hasValues,
 } from "./charts.js";
 import { mount3D } from "./three-view.js";
 
@@ -150,6 +151,9 @@ async function jumpDetailView(id) {
   ]);
   view.append(grid);
 
+  // tracking / wingsuit performance (only when relevant)
+  if (shouldShowTracking(jump)) view.append(TrackingPanel(jump));
+
   // edit form (collapsible)
   view.append(EditJumpForm(jump, {
     onSave: async (patch) => {
@@ -239,6 +243,10 @@ function renderStats(st) {
   view.append(StatsOverview(st));
   view.append(el("div", { class: "chart-grid" }, [
     ChartCard({ name: "barChart", color: "track", title: "Sprongen per maand", charts: liveCharts, build: (cv) => jumpsPerMonthChart(cv, st.perMonth) }),
+    ChartCard({ name: "parachute", color: "freefall", title: "Sprongen per type", charts: liveCharts, hasData: Object.keys(st.byType || {}).length > 0, build: (cv) => byTypeChart(cv, st.byType) }),
+  ]));
+  view.append(el("div", { class: "chart-grid" }, [
+    ChartCard({ name: "mapPin", color: "canopy", title: "Sprongen per dropzone", charts: liveCharts, hasData: Object.keys(st.byDropzone || {}).length > 0, build: (cv) => byDropzoneChart(cv, st.byDropzone) }),
     ChartCard({ name: "mountain", color: "altitude", title: "Verdeling exit-hoogtes", charts: liveCharts, hasData: Object.keys(st.exitBuckets).length > 0, build: (cv) => exitDistributionChart(cv, st.exitBuckets) }),
   ]));
   view.append(ChartCard({ name: "trendingUp", color: "freefall", title: "Cumulatieve vrije-val-tijd", charts: liveCharts, hasData: st.freefallAccrual.length > 0, build: (cv) => freefallAccrualChart(cv, st.freefallAccrual) }));

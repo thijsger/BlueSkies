@@ -252,16 +252,43 @@ function Field(label, input) {
   return el("label", { class: "field" }, [el("span", { class: "field-label" }, label), input]);
 }
 
+// ---------------------------------------------------------------- TrackingPanel
+// Wingsuit / tracking performance — horizontal motion during freefall.
+export function TrackingPanel(jump) {
+  const s = jump.summary || {};
+  const kmh = (v) => (v != null ? Math.round(v * 3.6) : null);
+  const grid = el("div", { class: "metric-grid" }, [
+    MetricCard({ name: "navigation", color: "track", label: "Glijgetal", value: s.glideRatio != null ? s.glideRatio.toFixed(2) : null, unit: ": 1", estimate: true, tooltip: "Horizontale verplaatsing ÷ verticale val — schatting (baro)", placeholder: "Niet beschikbaar" }),
+    MetricCard({ name: "wind", color: "speed", label: "Gem. horiz. snelheid", value: kmh(s.ffAvgHorizontalSpeed), unit: "km/u", placeholder: "Geen GPS" }),
+    MetricCard({ name: "gauge", color: "speed", label: "Piek horiz. snelheid", value: kmh(s.ffPeakHorizontalSpeed), unit: "km/u", placeholder: "Geen GPS" }),
+    MetricCard({ name: "move", color: "track", label: "Horizontale afstand", value: s.ffHorizontalDistance != null ? num(s.ffHorizontalDistance) : null, unit: "m", placeholder: "Geen GPS" }),
+  ]);
+  return el("div", { class: "panel" }, [PanelHead("navigation", "Tracking & wingsuit", "track"), grid]);
+}
+
+// shows the tracking panel only when it's relevant
+export function shouldShowTracking(jump) {
+  const t = (jump.jumpType || "").toLowerCase();
+  const s = jump.summary || {};
+  return t === "wingsuit" || t === "tracking" || (s.glideRatio != null && s.glideRatio >= 0.5);
+}
+
 // ---------------------------------------------------------------- StatsOverview
 export function StatsOverview(st) {
-  const grid = el("div", { class: "metric-grid" }, [
+  const currency = st.daysSinceLast == null
+    ? { value: null }
+    : st.daysSinceLast === 0
+      ? { value: "Vandaag", unit: "" }
+      : { value: num(st.daysSinceLast), unit: st.daysSinceLast === 1 ? "dag geleden" : "dagen geleden" };
+
+  return el("div", { class: "metric-grid" }, [
     MetricCard({ name: "parachute", label: "Totaal sprongen", value: num(st.totalJumps), color: "track" }),
-    MetricCard({ name: "clock", label: "Totale vrije val", value: fmtDuration(st.totalFreefallSec), color: "freefall" }),
-    MetricCard({ name: "parachute", label: "Totale canopy-tijd", value: fmtDuration(st.totalCanopySec), color: "canopy" }),
+    MetricCard({ name: "clock", label: "Laatste sprong", value: currency.value, unit: currency.unit, color: "altitude", placeholder: "—" }),
+    MetricCard({ name: "trendingDown", label: "Totale vrije val", value: fmtDuration(st.totalFreefallSec), color: "freefall" }),
+    MetricCard({ name: "activity", label: "Gem. vrije val", value: st.avgFreefallSec != null ? fmtDuration(st.avgFreefallSec) : null, color: "freefall" }),
     MetricCard({ name: "mountain", label: "Hoogste exit", value: st.highestExit != null ? num(st.highestExit) : null, unit: "m", color: "altitude" }),
-    MetricCard({ name: "trendingDown", label: "Langste vrije val", value: fmtDuration(st.longestFreefall), color: "freefall" }),
+    MetricCard({ name: "mountain", label: "Gem. exit-hoogte", value: st.avgExit != null ? num(st.avgExit) : null, unit: "m", color: "altitude" }),
   ]);
-  return grid;
 }
 
 export function capitalize(s) {
