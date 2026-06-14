@@ -148,8 +148,10 @@ export function mount3D(container, scrubInput, playBtn, jump) {
   const center = trackBox.getCenter(new THREE.Vector3());
   const trackSpan = Math.max(trackBox.getSize(new THREE.Vector3()).length(), horizSpan * 0.4);
 
-  // --- ground pins (pole + sphere + label) ---
-  const pinSize = Math.max(horizSpan * 0.02, 8);
+  // --- ground pins: small precise marker + thin reference pole + label ---
+  const headR = Math.max(radius * 0.45, 2);     // small dot (was ~50 m, now metres)
+  const poleR = Math.max(radius * 0.06, 0.4);   // thin vertical reference line
+  const labelSize = Math.max(horizSpan * 0.015, 10); // keep the label readable
   pin(pts[0], 0xf6a23b, "EXIT");
   pin(pts[pts.length - 1], 0x10d68a, "LANDING");
   if (jump.target && jump.target.lat != null) {
@@ -157,16 +159,17 @@ export function mount3D(container, scrubInput, playBtn, jump) {
     pin(tp, 0x2f6bff, "TARGET");
   }
   function pin(p, color, text) {
+    const h = Math.max(p.y, headR * 2);
     const pole = new THREE.Mesh(
-      new THREE.CylinderGeometry(pinSize * 0.08, pinSize * 0.08, p.y || pinSize, 8),
-      new THREE.MeshBasicMaterial({ color })
+      new THREE.CylinderGeometry(poleR, poleR, h, 8),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7 })
     );
-    pole.position.set(p.x, (p.y || pinSize) / 2, p.z);
+    pole.position.set(p.x, h / 2, p.z);
     scene.add(pole);
-    const head = sphere(color, pinSize * 0.5);
+    const head = sphere(color, headR);
     head.position.copy(p);
     scene.add(head);
-    scene.add(label(text, p, color, pinSize));
+    scene.add(label(text, p, color, labelSize));
   }
 
   // animated position marker
@@ -262,8 +265,8 @@ function label(text, position, color, size) {
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
-  spr.position.copy(position).add(new THREE.Vector3(0, size * 2.4, 0));
-  spr.scale.set(size * 7, size * 2, 1);
+  spr.position.copy(position).add(new THREE.Vector3(0, size * 1.5, 0));
+  spr.scale.set(size * 6, size * 1.7, 1);
   return spr;
 }
 function roundRect(ctx, x, y, w, h, r) {
