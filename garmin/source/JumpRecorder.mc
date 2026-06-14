@@ -68,7 +68,8 @@ class JumpRecorder {
     var mPhase as Number = PH_CLIMB;
     var mMaxAlt = null;
     var mLastAlt = null;
-    var mPrevSecAlt = null;
+    var mBufT as Array<Lang.Float> = [];    // rolling ~1.5 s window: timestamps
+    var mBufAlt as Array<Lang.Float> = [];  // rolling ~1.5 s window: altitudes
     var mExitAlt = null;
     var mFreefallStartT as Float = -1.0;
     var mFreefallEndT as Float = -1.0;
@@ -171,7 +172,7 @@ class JumpRecorder {
 
         mT = []; mAlt = []; mHr = []; mLat = []; mLng = []; mPh = [];
         mPhase = PH_CLIMB; mTick = 0;
-        mMaxAlt = null; mLastAlt = null; mPrevSecAlt = null; mExitAlt = null;
+        mMaxAlt = null; mLastAlt = null; mBufT = []; mBufAlt = []; mExitAlt = null;
         mFreefallStartT = -1.0; mFreefallEndT = -1.0; mCanopyStartT = -1.0; mLandedT = -1.0;
         mPeakHr = 0; mPeakFall = 0.0; mPeakAccel = 0.0; mStable = 0; mFastLow = 0;
         mAccelMean = null; mAccelMin = null;
@@ -269,19 +270,15 @@ class JumpRecorder {
                 lat = deg[0]; lng = deg[1];
             }
         }
-        if (alt != null) { mLastAlt = alt; }
+        if (alt != null) {
+            mLastAlt = alt;
+            if (mMaxAlt == null || alt > mMaxAlt) { mMaxAlt = alt; }
+            pushAltBuf(t, alt);
+        }
         if (hr != null && hr > mPeakHr) { mPeakHr = hr; }
 
-        // fast accelerometer-based freefall onset (every 250 ms)
-        fastFreefallCheck(t);
-
-        // baro state machine at ~1 Hz
-        if (slow) {
-            var fall = 0.0;
-            if (mPrevSecAlt != null && alt != null) { fall = (mPrevSecAlt - alt).toFloat(); }
-            if (alt != null) { mPrevSecAlt = alt; }
-            updateStateMachine(t, alt, fall);
-        }
+        // fused baro + accelerometer evaluation every 250 ms
+        updateFusion(t, fallRateFromBuf());
 
         // adaptive sampling: 4 Hz in freefall, 1 Hz otherwise
         if (mPhase == PH_FREEFALL || slow) {
@@ -293,7 +290,6 @@ class JumpRecorder {
             mPh.add(mPhase);
         }
 
-        // auto-stop a couple of minutes after landing
         if (mPhase == PH_LANDED && mLandedT >= 0 && (t - mLandedT) > AUTO_STOP_SEC) {
             stop();
             return;
@@ -302,49 +298,83 @@ class JumpRecorder {
         if (slow) { WatchUi.requestUpdate(); }
     }
 
-    function fastFreefallCheck(t as Float) as Void {
-        if ((mPhase == PH_CLIMB || mPhase == PH_EXIT) && mAccelMean != null && mAccelMean < 500.0) {
-            mFastLow += 1;
-            if (mFastLow >= 4) { // ~1 s sustained near-0 g
-                if (mExitAlt == null) { mExitAlt = mLastAlt; }
-                mPhase = PH_FREEFALL;
-                if (mFreefallStartT < 0) { mFreefallStartT = t; }
-                mFastLow = 0;
-                vibrate(3);
-            }
-        } else {
-            mFastLow = 0;
+    // rolling ~1.5 s altitude window -> smoothed vertical speed
+    function pushAltBuf(t as Lang.Float, alt as Lang.Float) as Void {
+        mBufT.add(t);
+        mBufAlt.add(alt);
+        while (mBufT.size() > 1 && (t - mBufT[0]) > 1.5) {
+            mBufT = mBufT.slice(1, null);
+            mBufAlt = mBufAlt.slice(1, null);
         }
     }
 
-    function updateStateMachine(t as Float, alt, fall as Float) as Void {
-        if (alt == null) { return; }
-        if (mMaxAlt == null || alt > mMaxAlt) { mMaxAlt = alt; }
-        if (fall > mPeakFall) { mPeakFall = fall; }
+    // fall rate (m/s, positive = descending) from the buffer slope; null if N/A
+    function fallRateFromBuf() as Lang.Float? {
+        var n = mBufT.size();
+        if (n < 2) { return null; }
+        var dt = mBufT[n - 1] - mBufT[0];
+        if (dt <= 0.0) { return null; }
+        var fr = (mBufAlt[0] - mBufAlt[n - 1]) / dt;
+        if (fr > mPeakFall) { mPeakFall = fr; }
+        return fr;
+    }
 
-        var accelBack = (mAccelMean != null && mAccelMean > 800.0);
-        var prev = mPhase;
+    // SENSOR FUSION: combine baro fall rate (fr) with accelerometer g-load.
+    // Freefall = near-0 g AND baro confirms a real descent (or baro alone if very
+    // fast). Canopy = fall rate dropping, confirmed faster by the opening shock.
+    function updateFusion(t as Float, fr as Lang.Float?) as Void {
+        var hasFr = (fr != null);
+        var frv = (fr != null) ? fr : 0.0;                       // concrete fall rate
+        var lowG = (mAccelMean != null && mAccelMean < 450.0);   // weightless
+        var shock = (mPeakAccel > 1600.0);                       // canopy opening
+        var loadG = (mAccelMean != null && mAccelMean > 800.0);  // under canopy / climb
+        var cur = mPhase;
 
-        if (mPhase == PH_CLIMB) {
-            if (fall > 8.0) { mPhase = PH_EXIT; mExitAlt = alt; }
-        } else if (mPhase == PH_EXIT) {
-            if (fall > 25.0) { mPhase = PH_FREEFALL; if (mFreefallStartT < 0) { mFreefallStartT = t; } }
-            else if (fall < 3.0) { mPhase = PH_CLIMB; }
-        } else if (mPhase == PH_FREEFALL) {
-            if (fall < 12.0 || accelBack) {
+        if (cur == PH_CLIMB) {
+            // descent begins: baro drop, or weightlessness with any confirmed drop
+            if ((hasFr && frv > 5.0) || (lowG && hasFr && frv > 3.0)) {
+                mPhase = PH_EXIT;
+                if (mExitAlt == null) { mExitAlt = mLastAlt; }
+            }
+
+        } else if (cur == PH_EXIT) {
+            var ffNow = (lowG && hasFr && frv > 10.0) || (hasFr && frv > 30.0);
+            if (ffNow) {
+                mFastLow += 1;
+                if (mFastLow >= 3) { // ~0.75 s corroborated
+                    mPhase = PH_FREEFALL;
+                    if (mFreefallStartT < 0) { mFreefallStartT = t; }
+                    mFastLow = 0;
+                }
+            } else {
+                mFastLow = 0;
+                if (hasFr && frv < 2.0 && !lowG) { mPhase = PH_CLIMB; } // false alarm
+            }
+
+        } else if (cur == PH_FREEFALL) {
+            // canopy: fall rate down and/or sustained g-load; opening shock confirms fast
+            var slowing = (hasFr && frv < 14.0) || loadG;
+            if (slowing) {
                 mStable += 1;
-                if (mStable >= 2) {
+                var need = shock ? 2 : 6; // opening shock -> confirm in ~0.5 s
+                if (mStable >= need) {
                     mPhase = PH_CANOPY; mFreefallEndT = t; mCanopyStartT = t; mStable = 0;
                 }
-            } else { mStable = 0; }
-        } else if (mPhase == PH_CANOPY) {
-            if (fall < 1.0 && fall > -1.0) {
+            } else {
+                mStable = 0;
+            }
+
+        } else if (cur == PH_CANOPY) {
+            var stopped = (hasFr && frv < 1.5 && frv > -1.5);
+            if (stopped) {
                 mStable += 1;
-                if (mStable >= 5) { mPhase = PH_LANDED; mLandedT = t; }
-            } else { mStable = 0; }
+                if (mStable >= 20) { mPhase = PH_LANDED; mLandedT = t; } // ~5 s
+            } else {
+                mStable = 0;
+            }
         }
 
-        if (mPhase != prev) { vibrate(mPhase == PH_FREEFALL ? 3 : 1); }
+        if (mPhase != cur) { vibrate(mPhase == PH_FREEFALL ? 3 : 1); }
     }
 
     function vibrate(count as Number) as Void {
