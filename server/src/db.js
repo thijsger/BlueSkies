@@ -113,6 +113,7 @@ export function updateJump(id, patch) {
   if (!jump) return null;
 
   if (patch.jumpType !== undefined) jump.jumpType = patch.jumpType;
+  if (patch.aircraft !== undefined) jump.aircraft = patch.aircraft;
   if (patch.notes !== undefined) jump.notes = patch.notes;
   if (patch.jumpNumber !== undefined) jump.jumpNumber = patch.jumpNumber;
   if (patch.dropzone !== undefined) jump.dropzone = patch.dropzone;

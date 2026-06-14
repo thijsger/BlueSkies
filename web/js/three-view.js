@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { PHASE_COLORS } from "./util.js";
+import { iconSVG } from "./icons.js";
 
 // Render the full 3D jump track (exit -> freefall -> canopy -> landing),
 // coloured by phase, with ground plane + exit/landing markers, orbit controls
@@ -140,7 +141,7 @@ export function mount3D(container, scrubInput, playBtn, jump) {
   scrubInput.addEventListener("input", () => setIdx(Number(scrubInput.value)));
   playBtn.addEventListener("click", () => {
     playing = !playing;
-    playBtn.textContent = playing ? "⏸ Pauze" : "▶ Afspelen";
+    playBtn.innerHTML = iconSVG(playing ? "pause" : "play", 16);
     if (playing && idx >= pts.length - 1) setIdx(0);
   });
 
@@ -152,7 +153,7 @@ export function mount3D(container, scrubInput, playBtn, jump) {
     last = now;
     if (playing) {
       setIdx(idx + (pts.length / 12000) * dt); // ~12s full playback
-      if (idx >= pts.length - 1) { playing = false; playBtn.textContent = "▶ Afspelen"; }
+      if (idx >= pts.length - 1) { playing = false; playBtn.innerHTML = iconSVG("play", 16); }
     }
     controls.update();
     renderer.render(scene, camera);

@@ -1,13 +1,17 @@
 import { api } from "./api.js";
 import { el, toast, fmtDuration, fmtDate, num } from "./util.js";
+import { icon } from "./icons.js";
 import {
-  altitudeChart, verticalSpeedChart, heartRateChart, groundSpeedChart,
-  jumpsPerMonthChart, freefallAccrualChart, exitDistributionChart, phaseLegend,
+  MetricCard, JumpPhaseTimeline, ChartCard, JumpHeader, EmptyState,
+  EditJumpForm, StatsOverview, capitalize,
+} from "./components.js";
+import {
+  altitudeChart, verticalSpeedChart, heartRateChart, groundSpeedChart, combinedChart,
+  jumpsPerMonthChart, freefallAccrualChart, exitDistributionChart, hasValues,
 } from "./charts.js";
 import { mount3D } from "./three-view.js";
 
 const view = document.getElementById("view");
-const JUMP_TYPES = ["", "tandem", "AFF", "fun", "freefly", "tracking", "wingsuit", "hop & pop"];
 
 let liveCharts = [];
 let cleanup3D = null;
@@ -23,36 +27,25 @@ function startPoll(fn, ms = 5000) { stopPoll(); pollTimer = setInterval(fn, ms);
 function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
 
 // ---------------------------------------------------------------- router
-const routes = {
-  "": logbookView,
-  "#/logbook": logbookView,
-  "#/stats": statsView,
-  "#/upload": uploadView,
-};
+const routes = { "": logbookView, "#/logbook": logbookView, "#/stats": statsView, "#/upload": uploadView };
 
 async function router() {
   teardown();
   const hash = location.hash;
   setActiveNav(hash);
   try {
-    if (hash.startsWith("#/jump/")) {
-      await jumpDetailView(hash.slice("#/jump/".length));
-    } else {
-      await (routes[hash] || logbookView)();
-    }
+    if (hash.startsWith("#/jump/")) await jumpDetailView(hash.slice("#/jump/".length));
+    else await (routes[hash] || logbookView)();
+    window.scrollTo({ top: 0 });
   } catch (e) {
     view.innerHTML = "";
-    view.append(el("div", { class: "empty" }, [
-      el("div", { class: "big" }, "⚠️"),
-      el("p", {}, el("strong", {}, "Kon data niet laden")),
-      el("p", { class: "muted" }, e.message),
-      el("p", { class: "dim" }, "Draait de backend? Controleer de API-URL."),
-    ]));
+    view.append(EmptyState({
+      name: "alert", title: "Kon data niet laden", text: e.message,
+    }));
   }
 }
 window.addEventListener("hashchange", router);
 window.addEventListener("DOMContentLoaded", router);
-document.querySelector(".brand").addEventListener("click", () => (location.hash = "#/logbook"));
 
 function setActiveNav(hash) {
   document.querySelectorAll("[data-nav]").forEach((a) => {
@@ -61,85 +54,73 @@ function setActiveNav(hash) {
   });
 }
 
+function pageHead(title, sub, action) {
+  return el("div", { class: "page-head" }, [
+    el("div", {}, [el("h1", { class: "page-title" }, title), sub ? el("p", { class: "page-sub" }, sub) : null]),
+    action || null,
+  ]);
+}
+
 // ---------------------------------------------------------------- logbook
 async function logbookView() {
-  let sig = null;
-  let prevCount = 0;
-
+  let sig = null, prev = 0;
   async function load() {
     const jumps = await api.listJumps();
     const newSig = jumps.map((j) => j.id + (j.jumpType || "")).join(",") + "|" + jumps.length;
-    if (newSig === sig) return;           // niets veranderd -> niet opnieuw renderen
-    if (sig !== null && jumps.length > prevCount) {
-      toast("🪂 Nieuwe sprong binnengekomen!", "ok");
-    }
-    sig = newSig;
-    prevCount = jumps.length;
+    if (newSig === sig) return;
+    if (sig !== null && jumps.length > prev) toast("Nieuwe sprong binnengekomen", "ok");
+    sig = newSig; prev = jumps.length;
     renderLogbook(jumps);
   }
-
   await load();
-  startPoll(load, 5000);  // automatisch verversen: live POST's verschijnen vanzelf
+  startPoll(load, 5000);
 }
 
 function renderLogbook(jumps) {
   view.innerHTML = "";
-  view.append(el("div", { class: "page-head" }, [
-    el("div", {}, [
-      el("h1", {}, [el("span", { class: "grad" }, "Logboek")]),
-      el("p", { class: "sub" }, jumps.length
-        ? `${jumps.length} sprong${jumps.length === 1 ? "" : "en"} · vernieuwt automatisch`
-        : "Persoonlijk naslag-logboek"),
-    ]),
-    el("a", { class: "btn", href: "#/upload" }, ["⬆️ Upload .FIT"]),
-  ]));
+  const uploadBtn = el("a", { class: "btn primary", href: "#/upload" }, [icon("upload", 16), "Upload .FIT"]);
+  view.append(pageHead("Logboek",
+    jumps.length ? `${jumps.length} sprong${jumps.length === 1 ? "" : "en"} · synct automatisch` : "Persoonlijk skydive-logboek",
+    uploadBtn));
 
-  if (!jumps.length) { view.append(emptyState()); return; }
+  if (!jumps.length) {
+    view.append(EmptyState({
+      name: "parachute", title: "Nog geen sprongen",
+      text: "Upload een .FIT-bestand of maak je eerste opname met de Garmin-app. Nieuwe sprongen verschijnen hier automatisch.",
+      action: el("a", { class: "btn primary", href: "#/upload" }, [icon("upload", 16), "Upload .FIT"]),
+    }));
+    return;
+  }
 
   const grid = el("div", { class: "logbook-grid" });
   for (const j of jumps) {
     const s = j.summary || {};
     grid.append(el("div", { class: "jump-card", onclick: () => (location.hash = "#/jump/" + j.id) }, [
-      el("div", { class: "jc-top" }, [
-        el("div", { class: "jc-num" }, [el("small", {}, "#"), String(j.jumpNumber ?? "—")]),
-        el("div", { style: "text-align:right" }, [
-          el("div", {}, sourceBadge(j.source)),
-          el("div", { class: "jc-date", style: "margin-top:4px" }, fmtDate(j.startTime)),
+      el("div", { class: "jc-rail" }),
+      el("div", { class: "jc-head" }, [
+        el("div", { class: "jc-num" }, [el("span", { class: "hash" }, "#"), String(j.jumpNumber ?? "—")]),
+        el("div", { class: "jc-src" }, [
+          el("span", { class: "status-badge neutral" }, [icon(j.source === "fit" ? "upload" : "refresh", 12), j.source === "fit" ? ".FIT" : "Watch"]),
+          el("div", { class: "jc-date" }, fmtDate(j.startTime)),
         ]),
       ]),
-      el("div", { class: "jc-dz" }, ["📍 ", j.dropzone || "Onbekende dropzone",
-        j.jumpType ? el("span", { class: "badge", style: "background:rgba(255,255,255,0.1);margin-left:auto" }, j.jumpType) : null]),
+      el("div", { class: "jc-dz" }, [icon("mapPin", 15), j.dropzone || "Onbekende dropzone",
+        j.jumpType ? el("span", { class: "jc-type" }, capitalize(j.jumpType)) : null]),
       el("div", { class: "jc-stats" }, [
-        miniStat("Exit", s.exitAltitude != null ? num(s.exitAltitude) + " m" : "—"),
-        miniStat("Vrije val", fmtDuration(s.freefallTime)),
-        miniStat("Piek HR", s.peakHr != null ? s.peakHr + "" : "—"),
+        jcStat("mountain", "altitude", "Exit", s.exitAltitude != null ? num(s.exitAltitude) + " m" : "—"),
+        jcStat("trendingDown", "freefall", "Vrije val", fmtDuration(s.freefallTime)),
+        jcStat("heart", "heart", "Piek HR", s.peakHr != null ? s.peakHr + "" : "—"),
       ]),
     ]));
   }
   view.append(grid);
 }
 
-function miniStat(label, value) {
+function jcStat(name, color, label, value) {
   return el("div", { class: "jc-stat" }, [
-    el("div", { class: "l" }, label),
-    el("div", { class: "v" }, value),
+    el("span", { class: "jc-stat-ico", "data-color": color }, [icon(name, 14)]),
+    el("div", {}, [el("div", { class: "jc-stat-l" }, label), el("div", { class: "jc-stat-v" }, value)]),
   ]);
-}
-
-function emptyState() {
-  return el("div", { class: "empty" }, [
-    el("div", { class: "big" }, "🪂"),
-    el("p", {}, el("strong", {}, "Nog geen sprongen")),
-    el("p", {}, "Upload een .FIT-bestand of maak je eerste opname met de Garmin-app."),
-    el("p", { class: "dim" }, "Nieuwe sprongen verschijnen hier automatisch."),
-    el("div", { class: "cta" }, el("a", { class: "btn", href: "#/upload" }, "⬆️ Upload .FIT")),
-  ]);
-}
-
-function sourceBadge(src) {
-  const map = { live: ["⌚ watch", "linear-gradient(135deg,#4f8dff,#8a5cff)"], fit: [".FIT", "linear-gradient(135deg,#8a5cff,#c026d3)"] };
-  const [txt, bg] = map[src] || ["?", "#30363d"];
-  return el("span", { class: "badge", style: `background:${bg}` }, txt);
 }
 
 // ---------------------------------------------------------------- jump detail
@@ -148,114 +129,82 @@ async function jumpDetailView(id) {
   view.innerHTML = "";
   const s = jump.summary || {};
 
-  view.append(el("a", { class: "back", href: "#/logbook" }, "← Terug naar logboek"));
-  view.append(el("div", { class: "page-head" }, [
-    el("div", {}, [
-      el("h1", {}, [el("span", { class: "grad" }, "Sprong #" + (jump.jumpNumber ?? "—"))]),
-      el("p", { class: "sub" }, `${fmtDate(jump.startTime)} · 📍 ${jump.dropzone || "Onbekende dropzone"} · ${jump.device || ""}`),
-    ]),
-    sourceBadge(jump.source),
-  ]));
+  view.append(el("a", { class: "back", href: "#/logbook" }, [icon("chevronDown", 16, "rot90"), "Terug naar logboek"]));
+  view.append(JumpHeader(jump));
 
-  if (s.dataQuality === "no-freefall-detected") {
-    view.append(el("div", { class: "note" },
-      "ℹ️ Geen vrije val gedetecteerd (bv. een grondtest of trage daling). Fases en samenvatting zijn een beste schatting."));
-  }
+  // phase timeline
+  view.append(JumpPhaseTimeline(jump));
 
-  // summary cards
-  const cards = el("div", { class: "cards" });
-  cards.append(card("Exit-hoogte", s.exitAltitude, "m", { icon: "🛩️", accent: "blue" }));
-  cards.append(card("Vrije val", fmtDuration(s.freefallTime), "", { icon: "🪂", accent: "red" }));
-  cards.append(card("Canopy-tijd", fmtDuration(s.canopyTime), "", { icon: "🟢", accent: "green" }));
-  cards.append(card("Piek daalsnelheid", s.peakVerticalSpeed, "m/s", { icon: "⚡", accent: "red", est: true }));
-  cards.append(card("Gem. daalsnelheid", s.avgVerticalSpeed, "m/s", { icon: "📉", est: true }));
-  cards.append(card("Piek hartslag", s.peakHr, "bpm", { icon: "❤️", accent: "pink" }));
-  cards.append(card("Gem. hartslag", s.avgHr, "bpm", { icon: "💗", accent: "pink" }));
-  cards.append(card("Horizontale drift", s.horizontalDrift, "m", { icon: "↔️", accent: "blue" }));
-  cards.append(card("Max grondsnelheid", s.maxGroundSpeed != null ? (s.maxGroundSpeed * 3.6).toFixed(0) : null, "km/u", { icon: "💨", accent: "green" }));
-  if (s.distanceToTarget != null) cards.append(card("Afstand tot target", s.distanceToTarget, "m", { icon: "🎯", accent: "blue" }));
-  view.append(cards);
-
-  view.append(editPanel(jump));
-
-  // 3D
-  const threeContainer = el("div", {});
-  const scrub = el("input", { type: "range", min: "0", max: "1", value: "1" });
-  const playBtn = el("button", { class: "btn secondary" }, "▶ Afspelen");
-  const threePanel = el("div", { class: "panel" }, [
-    el("h3", {}, [el("span", { class: "ico" }, "🧊"), "3D-sprongtrack"]),
-    phaseLegend(),
-    threeContainer,
-    el("div", { class: "three-controls" }, [playBtn, scrub]),
+  // metric cards
+  const grid = el("div", { class: "metric-grid" }, [
+    MetricCard({ name: "mountain", color: "altitude", label: "Exit-hoogte", value: s.exitAltitude != null ? num(s.exitAltitude) : null, unit: "m" }),
+    MetricCard({ name: "clock", color: "freefall", label: "Vrije-val-tijd", value: s.freefallTime != null ? fmtDuration(s.freefallTime) : null }),
+    MetricCard({ name: "parachute", color: "canopy", label: "Canopy-tijd", value: s.canopyTime != null ? fmtDuration(s.canopyTime) : null }),
+    MetricCard({ name: "gauge", color: "freefall", label: "Piek daalsnelheid", value: s.peakVerticalSpeed, unit: "m/s", estimate: true }),
+    MetricCard({ name: "gauge", color: "freefall", label: "Gem. daalsnelheid", value: s.avgVerticalSpeed, unit: "m/s", estimate: true }),
+    MetricCard({ name: "heart", color: "heart", label: "Piek hartslag", value: s.peakHr, unit: "bpm" }),
+    MetricCard({ name: "heart", color: "heart", label: "Gem. hartslag", value: s.avgHr, unit: "bpm" }),
+    MetricCard({ name: "wind", color: "speed", label: "Max grondsnelheid", value: s.maxGroundSpeed != null ? Math.round(s.maxGroundSpeed * 3.6) : null, unit: "km/u" }),
+    MetricCard({ name: "move", color: "track", label: "Horizontale drift", value: s.horizontalDrift != null ? num(s.horizontalDrift) : null, unit: "m" }),
+    MetricCard({ name: "target", color: "track", label: "Afstand tot target", value: s.distanceToTarget != null ? num(s.distanceToTarget) : null, unit: "m", placeholder: "Geen target" }),
   ]);
-  view.append(threePanel);
-  cleanup3D = mount3D(threeContainer, scrub, playBtn, jump);
+  view.append(grid);
+
+  // edit form (collapsible)
+  view.append(EditJumpForm(jump, {
+    onSave: async (patch) => {
+      try { await api.updateJump(jump.id, patch); toast("Opgeslagen", "ok"); router(); }
+      catch (e) { toast("Opslaan mislukt: " + e.message, "err"); }
+    },
+    onDelete: async () => {
+      try { await api.deleteJump(jump.id); toast("Sprong verwijderd", "ok"); location.hash = "#/logbook"; }
+      catch (e) { toast("Verwijderen mislukt: " + e.message, "err"); }
+    },
+  }));
+
+  // 3D track
+  view.append(track3DPanel(jump));
 
   // charts
-  view.append(phaseLegend());
-  view.append(chartPanel("📈", "Hoogte vs tijd", (cv) => altitudeChart(cv, jump)));
-  view.append(chartPanel("⚡", "Daalsnelheid vs tijd", (cv) => verticalSpeedChart(cv, jump), true));
-  view.append(chartPanel("❤️", "Hartslag vs tijd", (cv) => heartRateChart(cv, jump)));
-  view.append(chartPanel("💨", "Grondsnelheid — canopy-fase", (cv) => groundSpeedChart(cv, jump)));
+  const series = jump.series || [];
+  view.append(el("div", { class: "chart-grid" }, [
+    ChartCard({ name: "mountain", color: "altitude", title: "Hoogte vs tijd", charts: liveCharts, hasData: hasValues(series, "alt"), build: (cv) => altitudeChart(cv, jump) }),
+    ChartCard({ name: "gauge", color: "freefall", title: "Daalsnelheid vs tijd", badge: "schatting", charts: liveCharts, hasData: hasValues(series, "fallRate"), build: (cv) => verticalSpeedChart(cv, jump) }),
+    ChartCard({ name: "heart", color: "heart", title: "Hartslag vs tijd", charts: liveCharts, hasData: hasValues(series, "hr"), build: (cv) => heartRateChart(cv, jump) }),
+    ChartCard({ name: "wind", color: "canopy", title: "Grondsnelheid — canopy", charts: liveCharts, hasData: series.some((s2) => s2.phase === "canopy" && s2.groundSpeed != null), emptyText: "Geen GPS-grondsnelheid in de canopy-fase.", build: (cv) => groundSpeedChart(cv, jump) }),
+  ]));
+  view.append(ChartCard({ name: "activity", color: "altitude", title: "Hoogte + daalsnelheid", charts: liveCharts, hasData: hasValues(series, "alt"), build: (cv) => combinedChart(cv, jump) }));
 }
 
-function card(label, value, unit, opts = {}) {
-  const v = (value == null || value === "—") ? "—" : value;
-  return el("div", { class: "card" + (opts.accent ? " accent-" + opts.accent : "") }, [
-    opts.icon ? el("div", { class: "card-ico" }, opts.icon) : null,
-    el("div", { class: "label" }, [label, opts.est ? el("span", { class: "est", title: "Schatting — barometer onbetrouwbaar in vrije val" }, "schatting") : null]),
-    el("div", { class: "value" }, [String(v), unit ? el("span", { class: "unit" }, " " + unit) : null]),
+function track3DPanel(jump) {
+  const hasGps = (jump.series || []).some((s) => s.lat != null && s.lng != null);
+  const head = el("div", { class: "panel-head" }, [
+    el("span", { class: "panel-ico", "data-color": "track" }, [icon("cube", 17)]),
+    el("h3", {}, "3D-sprongtrack"),
   ]);
-}
 
-function chartPanel(ico, title, build, estimate) {
-  const canvas = el("canvas", {});
-  const panel = el("div", { class: "panel" }, [
-    el("h3", {}, [el("span", { class: "ico" }, ico), title,
-      estimate ? el("span", { class: "est", style: "margin-left:auto" }, "schatting") : null]),
-    el("div", { class: "chart-wrap" }, canvas),
-  ]);
-  requestAnimationFrame(() => liveCharts.push(build(canvas)));
+  if (!hasGps) {
+    return el("div", { class: "panel track-panel" }, [head, EmptyState({
+      name: "satellite", title: "Geen GPS-track beschikbaar",
+      text: "Deze opname bevat geen GPS-posities. Maak een opname buiten met GPS-fix, of upload een .FIT met locatiedata om de 3D-track te zien.",
+      action: el("a", { class: "btn ghost", href: "#/upload" }, [icon("upload", 15), "Upload .FIT"]),
+    })]);
+  }
+
+  const phaseChips = el("div", { class: "track-chips" });
+  for (const [ph, label] of [["climb", "Klim"], ["exit", "Exit"], ["freefall", "Vrije val"], ["canopy", "Canopy"], ["landed", "Landing"]]) {
+    phaseChips.append(el("span", { class: "phase-chip", "data-phase": ph }, [
+      el("span", { class: "dot", "data-phase": ph }), label,
+    ]));
+  }
+
+  const container = el("div", { class: "three-container" });
+  const scrub = el("input", { type: "range", min: "0", max: "1", value: "1", class: "scrubber" });
+  const playBtn = el("button", { class: "btn ghost icon-btn" }, [icon("play", 16)]);
+  const controls = el("div", { class: "three-controls" }, [playBtn, scrub]);
+  const panel = el("div", { class: "panel track-panel" }, [head, phaseChips, container, controls]);
+  requestAnimationFrame(() => { cleanup3D = mount3D(container, scrub, playBtn, jump); });
   return panel;
-}
-
-function editPanel(jump) {
-  const typeSel = el("select", {},
-    JUMP_TYPES.map((t) => el("option", t === (jump.jumpType || "") ? { value: t, selected: "" } : { value: t }, t || "— type —")));
-  const notes = el("textarea", { placeholder: "Notities…" }, jump.notes || "");
-  const targetLat = el("input", { type: "number", step: "0.000001", placeholder: "lat", value: jump.target?.lat ?? "" });
-  const targetLng = el("input", { type: "number", step: "0.000001", placeholder: "lng", value: jump.target?.lng ?? "" });
-
-  const save = el("button", { class: "btn", onclick: async () => {
-    try {
-      const target = (targetLat.value && targetLng.value)
-        ? { lat: Number(targetLat.value), lng: Number(targetLng.value) } : null;
-      await api.updateJump(jump.id, { jumpType: typeSel.value, notes: notes.value, target });
-      toast("✓ Opgeslagen", "ok");
-      router();
-    } catch (e) { toast("Opslaan mislukt: " + e.message, "err"); }
-  } }, "💾 Opslaan");
-
-  const del = el("button", { class: "btn danger", onclick: async () => {
-    if (!confirm("Deze sprong verwijderen?")) return;
-    try { await api.deleteJump(jump.id); toast("Verwijderd", "ok"); location.hash = "#/logbook"; }
-    catch (e) { toast("Verwijderen mislukt: " + e.message, "err"); }
-  } }, "🗑 Verwijder");
-
-  return el("div", { class: "panel" }, [
-    el("h3", {}, [el("span", { class: "ico" }, "✏️"), "Bewerken"]),
-    el("div", { class: "inline-edit" }, [
-      field("Type", typeSel),
-      field("Target lat", targetLat),
-      field("Target lng", targetLng),
-    ]),
-    field("Notities", notes),
-    el("div", { class: "inline-edit", style: "margin-top:0.5rem" }, [save, del]),
-  ]);
-}
-
-function field(label, input) {
-  return el("div", { class: "field" }, [el("label", {}, label), input]);
 }
 
 // ---------------------------------------------------------------- stats
@@ -276,80 +225,62 @@ function renderStats(st) {
   liveCharts.forEach((c) => c.destroy());
   liveCharts = [];
   view.innerHTML = "";
-  view.append(el("h1", {}, [el("span", { class: "grad" }, "Statistieken")]));
+  view.append(pageHead("Statistieken", st.totalJumps ? "Cumulatieve cijfers en trends · synct automatisch" : "Cumulatieve cijfers en trends over al je sprongen"));
 
   if (!st.totalJumps) {
-    view.append(el("p", { class: "sub" }, "Cumulatieve cijfers en trends over al je sprongen."));
-    view.append(emptyState());
+    view.append(EmptyState({
+      name: "barChart", title: "Nog geen statistieken",
+      text: "Zodra je eerste sprong binnen is, verschijnen hier je totalen en trends.",
+      action: el("a", { class: "btn primary", href: "#/upload" }, [icon("upload", 16), "Upload .FIT"]),
+    }));
     return;
   }
-  view.append(el("p", { class: "sub" }, "Cumulatieve cijfers en trends — vernieuwt automatisch."));
 
-  const cards = el("div", { class: "cards" });
-  cards.append(card("Totaal sprongen", st.totalJumps, "", { icon: "🪂", accent: "blue" }));
-  cards.append(card("Totale vrije val", fmtDuration(st.totalFreefallSec), "", { icon: "⏱️", accent: "red" }));
-  cards.append(card("Totale canopy-tijd", fmtDuration(st.totalCanopySec), "", { icon: "🟢", accent: "green" }));
-  cards.append(card("Hoogste exit", st.highestExit, "m", { icon: "🛩️", accent: "blue" }));
-  cards.append(card("Langste vrije val", fmtDuration(st.longestFreefall), "", { icon: "📏", accent: "red" }));
-  view.append(cards);
-
-  view.append(chartPanelData("📊", "Sprongen per maand", (cv) => jumpsPerMonthChart(cv, st.perMonth)));
-  view.append(chartPanelData("📈", "Cumulatieve vrije-val-tijd", (cv) => freefallAccrualChart(cv, st.freefallAccrual)));
-  view.append(chartPanelData("🛩️", "Verdeling exit-hoogtes", (cv) => exitDistributionChart(cv, st.exitBuckets)));
-}
-
-function chartPanelData(ico, title, build) {
-  const canvas = el("canvas", {});
-  const panel = el("div", { class: "panel" }, [
-    el("h3", {}, [el("span", { class: "ico" }, ico), title]),
-    el("div", { class: "chart-wrap tall" }, canvas),
-  ]);
-  requestAnimationFrame(() => liveCharts.push(build(canvas)));
-  return panel;
+  view.append(StatsOverview(st));
+  view.append(el("div", { class: "chart-grid" }, [
+    ChartCard({ name: "barChart", color: "track", title: "Sprongen per maand", charts: liveCharts, build: (cv) => jumpsPerMonthChart(cv, st.perMonth) }),
+    ChartCard({ name: "mountain", color: "altitude", title: "Verdeling exit-hoogtes", charts: liveCharts, hasData: Object.keys(st.exitBuckets).length > 0, build: (cv) => exitDistributionChart(cv, st.exitBuckets) }),
+  ]));
+  view.append(ChartCard({ name: "trendingUp", color: "freefall", title: "Cumulatieve vrije-val-tijd", charts: liveCharts, hasData: st.freefallAccrual.length > 0, build: (cv) => freefallAccrualChart(cv, st.freefallAccrual) }));
 }
 
 // ---------------------------------------------------------------- upload
 async function uploadView() {
   view.innerHTML = "";
-  view.append(el("h1", {}, [el("span", { class: "grad" }, "Upload .FIT-bestand")]));
-  view.append(el("p", { class: "sub" },
-    "Exporteer een activiteit van je Garmin als .FIT en sleep hem hierheen. Wordt direct geparsed en getoond."));
+  view.append(pageHead("Upload .FIT", "Exporteer een activiteit van je Garmin als .FIT en sleep hem hierheen. Wordt server-side geparsed in hetzelfde datamodel als een live opname."));
 
+  const JUMP_TYPES = ["", "tandem", "AFF", "fun", "freefly", "tracking", "wingsuit", "hop & pop"];
   const fileInput = el("input", { type: "file", accept: ".fit,.FIT", style: "display:none" });
   const typeSel = el("select", {}, JUMP_TYPES.map((t) => el("option", { value: t }, t || "— type (optioneel) —")));
-  const status = el("div", {});
+  const status = el("div", { class: "upload-status" });
 
   const dz = el("div", { class: "dropzone" }, [
-    el("div", { class: "big" }, "📂"),
-    el("p", {}, el("strong", {}, "Sleep een .FIT hierheen of klik om te kiezen")),
-    el("p", { class: "dim" }, "max 25 MB · wordt automatisch geüpload zodra je een bestand kiest"),
+    el("div", { class: "dz-ico" }, [icon("upload", 30)]),
+    el("div", { class: "dz-title" }, "Sleep een .FIT hierheen of klik om te kiezen"),
+    el("div", { class: "dz-hint" }, "max 25 MB · wordt automatisch geüpload zodra je een bestand kiest"),
   ]);
   dz.addEventListener("click", () => fileInput.click());
   dz.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("drag"); });
   dz.addEventListener("dragleave", () => dz.classList.remove("drag"));
-  dz.addEventListener("drop", (e) => {
-    e.preventDefault(); dz.classList.remove("drag");
-    if (e.dataTransfer.files[0]) doUpload(e.dataTransfer.files[0]);
-  });
+  dz.addEventListener("drop", (e) => { e.preventDefault(); dz.classList.remove("drag"); if (e.dataTransfer.files[0]) doUpload(e.dataTransfer.files[0]); });
   fileInput.addEventListener("change", () => { if (fileInput.files[0]) doUpload(fileInput.files[0]); });
 
   async function doUpload(file) {
     status.innerHTML = "";
-    status.append(el("div", { class: "note" }, `⏳ Bezig met uploaden en parsen van ${file.name}…`));
+    status.append(el("div", { class: "note info" }, [icon("refresh", 15), `Bezig met uploaden en parsen van ${file.name}…`]));
     try {
       const res = await api.uploadFit(file, { jumpType: typeSel.value });
-      toast("✓ Sprong geïmporteerd (#" + res.jumpNumber + ")", "ok");
+      toast("Sprong geïmporteerd (#" + res.jumpNumber + ")", "ok");
       location.hash = "#/jump/" + res.id;
     } catch (e) {
       status.innerHTML = "";
-      status.append(el("div", { class: "note" }, "❌ Upload mislukt: " + e.message));
+      status.append(el("div", { class: "note err" }, [icon("alert", 15), "Upload mislukt: " + e.message]));
     }
   }
 
-  view.append(el("div", { class: "panel" }, [
-    field("Type (optioneel)", typeSel),
+  view.append(el("div", { class: "panel upload-panel" }, [
+    el("label", { class: "field" }, [el("span", { class: "field-label" }, "Type (optioneel)"), typeSel]),
     dz, fileInput, status,
+    el("p", { class: "field-hint" }, "Tip: maak eerst een normale activiteit-opname om de hele pijplijn te testen vóór een echte sprong."),
   ]));
-  view.append(el("p", { class: "dim" },
-    "Tip: maak eerst een normale activiteit-opname om de hele pijplijn te testen vóór een echte sprong."));
 }

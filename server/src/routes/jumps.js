@@ -81,7 +81,7 @@ router.get("/jumps/:id", (req, res) => {
 
 // PATCH /api/jumps/:id  — edit jumpType / notes / jumpNumber / target / dropzone
 router.patch("/jumps/:id", (req, res) => {
-  const allowed = ["jumpType", "notes", "jumpNumber", "target", "dropzone"];
+  const allowed = ["jumpType", "aircraft", "notes", "jumpNumber", "target", "dropzone"];
   const patch = {};
   for (const k of allowed) if (k in req.body) patch[k] = req.body[k];
   const jump = updateJump(req.params.id, patch);

@@ -1,17 +1,35 @@
 export const PHASE_COLORS = {
-  climb: "#3b82f6",
-  exit: "#f59e0b",
-  freefall: "#f43f5e",
+  climb: "#4f8dff",
+  exit: "#f6a23b",
+  freefall: "#f43f6e",
   canopy: "#10d68a",
-  landed: "#8b97b3",
+  landed: "#8a93a8",
 };
 export const PHASE_LABEL = {
   climb: "Klim",
   exit: "Exit",
   freefall: "Vrije val",
   canopy: "Canopy",
-  landed: "Geland",
+  landed: "Landing",
 };
+
+// metric accent colors (per spec)
+export const METRIC_COLOR = {
+  altitude: "#4f8dff",
+  freefall: "#f43f6e",
+  canopy: "#10d68a",
+  heart: "#ff5d8f",
+  speed: "#f6a23b",
+  track: "#9b6bff",
+};
+
+export function fmtClock(sec) {
+  if (sec == null) return null;
+  sec = Math.round(sec);
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
 
 export function fmtDuration(sec) {
   if (sec == null) return "—";
