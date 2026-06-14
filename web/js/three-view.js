@@ -92,35 +92,50 @@ export function mount3D(container, scrubInput, playBtn, jump) {
   far.position.set(groundCx, -1.5, groundCz);
   scene.add(far);
 
-  // --- ground: satellite map texture (sits just above the far terrain) ---
-  const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(widthM, depthM, 1, 1),
-    new THREE.MeshBasicMaterial({ color: 0x355c3a }) // fallback colour until tiles load
-  );
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.set(groundCx, 0, groundCz);
-  scene.add(ground);
-
-  // load Esri World Imagery for the bbox (no API key). Progressive: a fast 1024
-  // texture appears almost instantly, then a crisp 2048 swaps in when ready.
-  const ar = widthM / depthM;
+  // --- ground: high-res satellite TILES (Esri World Imagery, no API key) ---
+  // Many small 256px tiles at the highest zoom that fits the budget -> sharp,
+  // and they stream in fast & in parallel (each ~8 KB) instead of one slow image.
+  const maxAniso = renderer.capabilities.getMaxAnisotropy();
   const loader = new THREE.TextureLoader();
   loader.setCrossOrigin("anonymous");
-  const esriUrl = (sz) => {
-    const px = ar >= 1 ? sz : Math.round(sz * ar);
-    const pz = ar >= 1 ? Math.round(sz / ar) : sz;
-    return "https://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/export" +
-      `?bbox=${minLng},${minLat},${maxLng},${maxLat}&bboxSR=4326&imageSR=4326` +
-      `&size=${px},${pz}&format=jpg&transparent=false&f=image`;
-  };
-  const setGround = (tex) => {
-    tex.colorSpace = THREE.SRGBColorSpace;
-    if (ground.material.map) ground.material.map.dispose();
-    ground.material.map = tex;
-    ground.material.color.set(0xffffff);
-    ground.material.needsUpdate = true;
-  };
-  loader.load(esriUrl(1024), (low) => { setGround(low); loader.load(esriUrl(2048), setGround); });
+  const tileGroup = new THREE.Group();
+  scene.add(tileGroup);
+
+  const lon2x = (lon, z) => Math.floor((lon + 180) / 360 * Math.pow(2, z));
+  const lat2y = (lat, z) => { const r = lat * Math.PI / 180; return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * Math.pow(2, z)); };
+  const x2lon = (x, z) => x / Math.pow(2, z) * 360 - 180;
+  const y2lat = (y, z) => { const n = Math.PI - 2 * Math.PI * y / Math.pow(2, z); return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n))); };
+
+  // pick the highest zoom that stays within the tile budget
+  const MAX_TILES = 300;
+  let Z = 14, x0 = 0, x1 = 0, y0 = 0, y1 = 0;
+  for (let z = 19; z >= 12; z--) {
+    const ax0 = lon2x(minLng, z), ax1 = lon2x(maxLng, z);
+    const ay0 = lat2y(maxLat, z), ay1 = lat2y(minLat, z);
+    if ((ax1 - ax0 + 1) * (ay1 - ay0 + 1) <= MAX_TILES) { Z = z; x0 = ax0; x1 = ax1; y0 = ay0; y1 = ay1; break; }
+  }
+  for (let x = x0; x <= x1; x++) {
+    for (let y = y0; y <= y1; y++) {
+      const lonW = x2lon(x, Z), lonE = x2lon(x + 1, Z);
+      const latN = y2lat(y, Z), latS = y2lat(y + 1, Z);
+      const xW = (lonW - lng0) * mPerDegLng, xE = (lonE - lng0) * mPerDegLng;
+      const zN = -(latN - lat0) * mPerDegLat, zS = -(latS - lat0) * mPerDegLat;
+      const mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(xE - xW, zS - zN),
+        new THREE.MeshBasicMaterial({ color: 0x6f8a5e })
+      );
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.set((xW + xE) / 2, 0.05, (zN + zS) / 2);
+      tileGroup.add(mesh);
+      const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${Z}/${y}/${x}`;
+      loader.load(url, (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = maxAniso;
+        mesh.material.dispose();
+        mesh.material = new THREE.MeshBasicMaterial({ map: tex });
+      });
+    }
+  }
 
   // --- track as a phase-coloured 3D tube ---
   const radius = Math.max(horizSpan * 0.004, 2);
@@ -224,6 +239,10 @@ export function mount3D(container, scrubInput, playBtn, jump) {
   return () => {
     cancelAnimationFrame(raf);
     window.removeEventListener("resize", onResize);
+    tileGroup.traverse((o) => {
+      if (o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); }
+      if (o.geometry) o.geometry.dispose();
+    });
     controls.dispose();
     renderer.dispose();
   };
