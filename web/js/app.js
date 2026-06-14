@@ -142,8 +142,6 @@ async function jumpDetailView(id) {
   // metric cards
   const grid = el("div", { class: "metric-grid" }, [
     MetricCard({ name: "mountain", color: "altitude", label: "Exit-hoogte", value: s.exitAltitude != null ? num(s.exitAltitude) : null, unit: "m" }),
-    MetricCard({ name: "clock", color: "freefall", label: "Vrije-val-tijd", value: s.freefallTime != null ? fmtDuration(s.freefallTime) : null }),
-    MetricCard({ name: "parachute", color: "canopy", label: "Canopy-tijd", value: s.canopyTime != null ? fmtDuration(s.canopyTime) : null }),
     MetricCard({ name: "gauge", color: "freefall", label: "Piek daalsnelheid", value: s.peakVerticalSpeed, unit: "m/s", estimate: true }),
     MetricCard({ name: "gauge", color: "freefall", label: "Gem. daalsnelheid", value: s.avgVerticalSpeed, unit: "m/s", estimate: true }),
     MetricCard({ name: "heart", color: "heart", label: "Piek hartslag", value: s.peakHr, unit: "bpm" }),
