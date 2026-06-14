@@ -13,7 +13,7 @@
   h1{margin:0;font-size:1.5rem;letter-spacing:-.02em}
   h1 .g{background:linear-gradient(135deg,#5b8cff,#9b6bff);-webkit-background-clip:text;background-clip:text;color:transparent}
   p.sub{color:var(--muted);margin:.3rem 0 0;font-size:.92rem}
-  .grid{display:flex;flex-wrap:wrap;gap:1.2rem;justify-content:center;padding:1.6rem 1.2rem 3rem;max-width:1200px;margin:0 auto}
+  .grid{display:flex;flex-wrap:wrap;gap:1.2rem;justify-content:center;padding:1.6rem 1.2rem 3rem;max-width:820px;margin:0 auto}
   .cell{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0)),var(--card);
     border:1px solid var(--border);border-radius:20px;padding:1rem;text-align:center}
   canvas{border-radius:50%;background:#000;display:block;margin:0 auto;box-shadow:0 0 0 6px #11151f,0 18px 40px -18px #000}
@@ -32,7 +32,9 @@
 <script>
 const SZ = 220, PH = ["KLIM","EXIT","VRIJE VAL","CANOPY","GELAND"];
 const PCOL = {KLIM:"#4F8DFF",EXIT:"#F6A23B","VRIJE VAL":"#F43F6E",CANOPY:"#10D68A",GELAND:"#8A93A8"};
-const SKY = {KLIM:"#0a1426",EXIT:"#0a1426","VRIJE VAL":"#0b1020",CANOPY:"#0a1730",GELAND:"#0c1422"};
+// realistic jumper palette (consistent person across phases)
+const SUIT="#e0584f", SUIT_D="#a23a37", HELM="#20242e", HELM_HI="#3a4254", VISOR="#8fb6ff",
+      DARK="#14171f", RIG="#2a2f3a", SKIN="#e7b48f";
 const ctxs = [];
 for (const p of PH) {
   const cell = document.createElement("div"); cell.className = "cell";
@@ -48,18 +50,25 @@ function ln(x,a,b,c,d){x.beginPath();x.moveTo(a,b);x.lineTo(c,d);x.stroke();}
 function poly(x,pts){x.beginPath();x.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)x.lineTo(pts[i][0],pts[i][1]);x.closePath();x.fill();}
 function plineW(x,pts){x.beginPath();x.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)x.lineTo(pts[i][0],pts[i][1]);x.stroke();}
 function circ(x,a,b,r){x.beginPath();x.arc(a,b,r,0,7);x.fill();}
-// rotate local (lx,ly) around (ox,oy) by ca/sa
 function R(ox,oy,lx,ly,ca,sa){return [ox+lx*ca-ly*sa, oy+lx*sa+ly*ca];}
+// capsule limb: thick line + rounded joints (matches the watch port: line + joint circles)
+function cap(ctx,p1,p2,wpx,col){
+  ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=wpx; ctx.lineCap="round";
+  ln(ctx,p1[0],p1[1],p2[0],p2[1]);
+  circ(ctx,p1[0],p1[1],wpx/2); circ(ctx,p2[0],p2[1],wpx/2);
+}
 
 function draw(ctx, ph, frame){
   const w=SZ,h=SZ,cx=w/2,cy=h*0.40,u=w/22;
-  // sky tint background inside the dial
   ctx.clearRect(0,0,w,h);
-  ctx.fillStyle=SKY[ph]; ctx.fillRect(0,0,w,h);
+  // sky gradient inside the dial
+  const g=ctx.createLinearGradient(0,0,0,h);
+  if(ph=="GELAND"){g.addColorStop(0,"#13233f");g.addColorStop(0.7,"#1a3050");g.addColorStop(1,"#243a22");}
+  else{g.addColorStop(0,"#0c1a36");g.addColorStop(1,"#0a1426");}
+  ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
   ctx.lineCap="round"; ctx.lineJoin="round"; ctx.textAlign="center";
   ctx.fillStyle=PCOL[ph]; ctx.font="bold 13px Inter,sans-serif";
   ctx.fillText(ph, w/2, h*0.11);
-  ctx.strokeStyle="#fff";
 
   if(ph=="KLIM") sceneClimb(ctx,cx,cy,u,frame);
   else if(ph=="EXIT") sceneExit(ctx,cx,cy,u,frame);
@@ -67,207 +76,217 @@ function draw(ctx, ph, frame){
   else if(ph=="CANOPY") sceneCanopy(ctx,cx,cy,u,frame);
   else sceneLanded(ctx,cx,cy,u,frame);
 
-  // stat hints
   ctx.fillStyle="#fff"; ctx.font="10px Inter,sans-serif";
   const da={KLIM:"3500 m",EXIT:"4000 m","VRIJE VAL":"2200 m",CANOPY:"700 m",GELAND:"0 m"};
-  ctx.fillText(da[ph],w*0.30,h*0.76); ctx.fillText("150 bpm",w*0.70,h*0.76);
+  ctx.fillText(da[ph],w*0.30,h*0.78); ctx.fillText("150 bpm",w*0.70,h*0.78);
 }
 
-// reusable: draw a jump plane (Twin Otter-ish) centred at px,py tilted by angle a
-function plane(ctx,px,py,u,a,frame,scale){
-  const s=scale, ca=Math.cos(a), sa=Math.sin(a);
+// ---- detailed jump plane (side view) centred px,py, tilt ca/sa, scale s ----
+function plane(ctx,px,py,u,ca,sa,s,frame){
   const P=(lx,ly)=>R(px,py,lx*u*s,ly*u*s,ca,sa);
-  // fuselage
-  ctx.fillStyle="#c4ccdb";
-  poly(ctx,[P(-3.0,0.25),P(-2.6,-0.5),P(2.2,-0.62),P(3.1,-0.18),P(3.25,0.1),P(2.4,0.6),P(-2.6,0.62)]);
-  // cockpit window
-  ctx.fillStyle="#0a1426";
-  poly(ctx,[P(2.3,-0.45),P(3.0,-0.12),P(2.95,0.12),P(2.35,0.05)]);
-  // cabin windows
-  ctx.fillStyle="#7fa8e6";
-  for(let i=0;i<5;i++){const wx=1.4-i*0.8; const q=P(wx,-0.15); ctx.beginPath();ctx.arc(q[0],q[1],u*s*0.14,0,7);ctx.fill();}
-  // tail fin
-  ctx.fillStyle="#c4ccdb";
-  poly(ctx,[P(-3.0,-0.4),P(-2.5,-1.7),P(-2.05,-1.7),P(-2.2,-0.45)]);
-  // horizontal stabiliser
-  poly(ctx,[P(-3.1,0.0),P(-2.2,-0.15),P(-2.2,0.15),P(-3.1,0.2)]);
-  // high wing on top
-  ctx.fillStyle="#aeb8c9";
-  poly(ctx,[P(-0.9,-0.62),P(2.2,-0.78),P(2.3,-0.56),P(-0.8,-0.42)]);
-  // wing strut
-  ctx.strokeStyle="#aeb8c9"; ctx.lineWidth=Math.max(1.5,u*s*0.09);
-  let s1=P(-0.2,-0.5), s2=P(0.4,0.2); ln(ctx,s1[0],s1[1],s2[0],s2[1]);
-  // fixed landing gear
-  ctx.lineWidth=Math.max(1.5,u*s*0.1);
-  let g1=P(0.3,0.6),g2=P(0.3,1.15); ln(ctx,g1[0],g1[1],g2[0],g2[1]);
-  let g3=P(-0.6,0.6),g4=P(-0.6,1.15); ln(ctx,g3[0],g3[1],g4[0],g4[1]);
-  let wheelA=P(0.3,1.2),wheelB=P(-0.6,1.2);
-  ctx.fillStyle="#2b3346"; circ(ctx,wheelA[0],wheelA[1],u*s*0.18); circ(ctx,wheelB[0],wheelB[1],u*s*0.18);
-  // spinning propeller at nose
-  ctx.strokeStyle="#dfe6f2"; ctx.lineWidth=Math.max(1.5,u*s*0.12);
-  const hub=P(3.25,-0.04); const pa=frame*0.9;
-  for(let b=0;b<3;b++){const ang=pa+b*2.094; const bl=R(hub[0],hub[1],Math.cos(ang)*u*s*1.2,Math.sin(ang)*u*s*1.2,1,0);
-    ln(ctx,hub[0],hub[1],bl[0],bl[1]);}
-  ctx.fillStyle="#dfe6f2"; circ(ctx,hub[0],hub[1],u*s*0.12);
-  return P; // local mapper (for door/jumper)
+  // prop blur disc (behind nose)
+  const hub=P(3.3,-0.04);
+  ctx.fillStyle="rgba(180,195,220,0.18)";
+  ctx.beginPath(); ctx.ellipse(hub[0],hub[1],u*s*0.35,u*s*1.25,sa,0,7); ctx.fill();
+  // fuselage base
+  ctx.fillStyle="#cfd6e3";
+  poly(ctx,[P(-3.1,0.28),P(-2.7,-0.5),P(2.2,-0.66),P(3.05,-0.32),P(3.3,-0.04),P(3.1,0.22),P(2.4,0.66),P(-2.7,0.66)]);
+  // top highlight + belly shade
+  ctx.fillStyle="#eef2fa"; poly(ctx,[P(-2.7,-0.5),P(2.2,-0.66),P(2.6,-0.4),P(-2.6,-0.24)]);
+  ctx.fillStyle="#9aa6ba"; poly(ctx,[P(-2.7,0.66),P(2.4,0.66),P(2.7,0.4),P(-2.6,0.42)]);
+  // brand stripe
+  ctx.fillStyle="#4F8DFF"; poly(ctx,[P(-2.5,0.12),P(2.3,0.0),P(2.35,0.2),P(-2.5,0.3)]);
+  // cockpit windscreen
+  ctx.fillStyle="#0a1426"; poly(ctx,[P(2.35,-0.5),P(3.05,-0.18),P(3.0,0.08),P(2.4,0.0)]);
+  // cabin windows (square)
+  ctx.fillStyle="#9cc2f2";
+  for(let i=0;i<5;i++){const q=P(1.5-i*0.78,-0.2); ctx.save();ctx.translate(q[0],q[1]);ctx.rotate(sa);ctx.fillRect(-u*s*0.16,-u*s*0.16,u*s*0.32,u*s*0.32);ctx.restore();}
+  // tail fin + stabiliser
+  ctx.fillStyle="#cfd6e3";
+  poly(ctx,[P(-3.1,-0.42),P(-2.55,-1.8),P(-2.05,-1.8),P(-2.2,-0.46)]);
+  poly(ctx,[P(-3.2,0.0),P(-2.2,-0.18),P(-2.2,0.16),P(-3.2,0.22)]);
+  // high wing + strut
+  ctx.fillStyle="#b8c2d3";
+  poly(ctx,[P(-1.0,-0.66),P(2.3,-0.84),P(2.42,-0.58),P(-0.9,-0.42)]);
+  ctx.strokeStyle="#9aa6ba"; ctx.lineWidth=Math.max(1.5,u*s*0.08);
+  let a1=P(-0.2,-0.5),a2=P(0.5,0.24); ln(ctx,a1[0],a1[1],a2[0],a2[1]);
+  // gear + wheels
+  ctx.strokeStyle="#7e8aa0"; ctx.lineWidth=Math.max(1.5,u*s*0.1);
+  let g1=P(0.4,0.62),g2=P(0.4,1.2); ln(ctx,g1[0],g1[1],g2[0],g2[1]);
+  let g3=P(-0.6,0.62),g4=P(-0.6,1.2); ln(ctx,g3[0],g3[1],g4[0],g4[1]);
+  ctx.fillStyle="#15181f"; let wa=P(0.4,1.28),wb=P(-0.6,1.28);
+  circ(ctx,wa[0],wa[1],u*s*0.2); circ(ctx,wb[0],wb[1],u*s*0.2);
+  // sharp prop blades over the disc
+  ctx.strokeStyle="rgba(223,230,242,0.8)"; ctx.lineWidth=Math.max(1.5,u*s*0.1);
+  const pa=frame*0.9;
+  for(let b=0;b<3;b++){const ang=pa+b*2.094; ln(ctx,hub[0],hub[1],hub[0]+Math.cos(ang)*u*s*1.2,hub[1]+Math.sin(ang)*u*s*1.2);}
+  ctx.fillStyle="#dfe6f2"; circ(ctx,hub[0],hub[1],u*s*0.13);
+  return P;
 }
+function cloud(ctx,x,y,u){ctx.fillStyle="rgba(150,170,205,0.14)";
+  circ(ctx,x,y,u*1.0);circ(ctx,x+u,y+u*0.1,u*0.8);circ(ctx,x-u*0.9,y+u*0.15,u*0.7);circ(ctx,x+u*0.2,y-u*0.45,u*0.65);}
 
-function cloud(ctx,x,y,u){
-  ctx.fillStyle="rgba(120,140,175,0.22)";
-  circ(ctx,x,y,u*0.9); circ(ctx,x+u*0.9,y+u*0.1,u*0.7); circ(ctx,x-u*0.8,y+u*0.15,u*0.6); circ(ctx,x+u*0.2,y-u*0.4,u*0.6);
+// ---- a fleshed jumper in a given local frame (J mapper), pose = "arch"|"dive"|"stand"|"sit"
+function rigPack(ctx,J,u,bx,by){ // container on the back
+  ctx.fillStyle=RIG;
+  poly(ctx,[J(bx-0.5,by-0.7),J(bx+0.5,by-0.7),J(bx+0.55,by+0.7),J(bx-0.55,by+0.7)]);
+  ctx.fillStyle="#3b4250"; poly(ctx,[J(bx-0.5,by-0.7),J(bx+0.5,by-0.7),J(bx+0.5,by-0.35),J(bx-0.5,by-0.35)]);
 }
 
 function sceneClimb(ctx,cx,cy,u,frame){
   const bob=Math.sin(frame*0.06)*u*0.18, drift=Math.sin(frame*0.03)*u*0.6;
-  // drifting clouds (parallax)
   const span=cx*2+u*4;
-  cloud(ctx, ((frame*0.7)% span) - u*2, cy+u*2.4, u);
-  cloud(ctx, ((frame*0.4 + span*0.55)% span) - u*2, cy+u*3.4, u*0.8);
-  // climb trail dots behind the plane
-  const px=cx+drift, py=cy+bob, a=-0.30;
-  const ca=Math.cos(a),sa=Math.sin(a);
-  ctx.fillStyle="rgba(79,141,255,0.55)";
-  for(let i=1;i<=6;i++){const q=R(px,py,(-3.2-i*0.7)*u,(0.1)*u,ca,sa); circ(ctx,q[0],q[1],u*0.09);}
-  // the plane, nose-up
-  const P=plane(ctx,px,py,u,a,frame,1.0);
-  // open jump door + jumper silhouette inside (blue)
-  ctx.fillStyle="#0a1426"; poly(ctx,[P(-1.7,-0.3),P(-0.9,-0.35),P(-0.9,0.45),P(-1.7,0.5)]);
-  ctx.fillStyle="#4F8DFF"; const j=P(-1.3,0.05); circ(ctx,j[0],j[1],u*0.2);
+  cloud(ctx,((frame*0.7)%span)-u*2,cy+u*2.6,u);
+  cloud(ctx,((frame*0.4+span*0.55)%span)-u*2,cy+u*3.6,u*0.8);
+  const px=cx+drift, py=cy+bob, a=-0.30, ca=Math.cos(a),sa=Math.sin(a);
+  ctx.fillStyle="rgba(79,141,255,0.5)";
+  for(let i=1;i<=6;i++){const q=R(px,py,(-3.3-i*0.7)*u,0.12*u,ca,sa); circ(ctx,q[0],q[1],u*0.09);}
+  const P=plane(ctx,px,py,u,ca,sa,1.0,frame);
+  // open door + jumper sitting in the doorway
+  ctx.fillStyle="#0a1426"; poly(ctx,[P(-1.8,-0.35),P(-0.85,-0.4),P(-0.85,0.5),P(-1.8,0.55)]);
+  ctx.fillStyle=SUIT; const j=P(-1.3,0.06); circ(ctx,j[0],j[1],u*0.26);
+  ctx.fillStyle=HELM; const jh=P(-1.05,-0.28); circ(ctx,jh[0],jh[1],u*0.17);
 }
 
 function sceneExit(ctx,cx,cy,u,frame){
-  // plane receding up-left (smaller), banking away
-  const a=-0.18;
-  const px=cx-3.4*u + Math.sin(frame*0.04)*u*0.2, py=cy-3.0*u;
-  const P=plane(ctx,px,py,u,a,frame,0.62);
-  // open door
-  ctx.fillStyle="#0a1426"; poly(ctx,[P(-1.7,-0.3),P(-0.9,-0.35),P(-0.9,0.5),P(-1.7,0.55)]);
-
-  // curved separation path from the door down toward the jumper
-  ctx.strokeStyle="rgba(246,162,59,0.5)"; ctx.lineWidth=Math.max(1.5,u*0.1); ctx.setLineDash([u*0.3,u*0.4]);
-  ctx.beginPath();
-  ctx.moveTo(px+0.6*u, py+1.0*u);
-  ctx.quadraticCurveTo(cx-1.0*u, cy-0.4*u, cx+0.4*u, cy+0.6*u);
-  ctx.stroke(); ctx.setLineDash([]);
-
-  // relative-wind lines hitting the diving jumper from below-front
+  const a=-0.18, ca=Math.cos(a),sa=Math.sin(a);
+  const px=cx-3.5*u+Math.sin(frame*0.04)*u*0.2, py=cy-3.1*u;
+  const P=plane(ctx,px,py,u,ca,sa,0.6,frame);
+  ctx.fillStyle="#0a1426"; poly(ctx,[P(-1.8,-0.35),P(-0.85,-0.4),P(-0.85,0.5),P(-1.8,0.55)]);
+  // dashed separation arc
+  ctx.strokeStyle="rgba(246,162,59,0.55)"; ctx.lineWidth=Math.max(1.5,u*0.1); ctx.setLineDash([u*0.35,u*0.45]);
+  ctx.beginPath(); ctx.moveTo(px+0.6*u,py+1.0*u); ctx.quadraticCurveTo(cx-1.2*u,cy-0.6*u,cx+0.2*u,cy+0.4*u); ctx.stroke(); ctx.setLineDash([]);
+  // relative-wind streaks
   ctx.strokeStyle="rgba(120,150,200,0.5)"; ctx.lineWidth=Math.max(1.5,u*0.1);
-  for(let i=0;i<4;i++){const yy=cy+1.7*u+i*0.5*u; const off=(frame*0.6)%(u*1.0);
-    ln(ctx, cx+1.8*u-off, yy, cx+0.9*u-off, yy-0.4*u);}
+  const woff=(frame%Math.round(u))*1.0;
+  for(let i=0;i<4;i++){const yy=cy+1.9*u+i*0.5*u; ln(ctx,cx+2.0*u-woff,yy,cx+1.1*u-woff,yy-0.4*u);}
+  // fleshed jumper diving away, rolling into the arch
+  const rot=-0.8+Math.sin(frame*0.16)*0.45;
+  jumperFlying(ctx,cx+0.3*u,cy+0.5*u,u,rot,frame,0.95);
+}
 
-  // jumper just exited: arched, head-low dive presentation, tumbling (rotates)
-  const rot=-0.9 + Math.sin(frame*0.18)*0.5; // rolling as they tip into the arch
+// belly-to-earth fleshed jumper, centre fx,fy, rotated rot, scale s
+function jumperFlying(ctx,fx,fy,u,rot,frame,s){
   const ca=Math.cos(rot),sa=Math.sin(rot);
-  const fx=cx+0.4*u, fy=cy+0.5*u;
-  const J=(lx,ly)=>R(fx,fy,lx*u,ly*u,ca,sa);
-  ctx.strokeStyle="#fff"; ctx.fillStyle="#fff"; ctx.lineWidth=Math.max(2,u*0.2);
-  // helmet
-  let head=J(0,-1.35); circ(ctx,head[0],head[1],u*0.42);
-  // torso (arched: slight curve)
-  let n=J(0,-0.95), hip=J(0.1,0.5);
-  ctx.beginPath(); ctx.moveTo(n[0],n[1]); ctx.quadraticCurveTo(J(-0.25,-0.2)[0],J(-0.25,-0.2)[1],hip[0],hip[1]); ctx.stroke();
-  // arms reaching forward (toward relative wind)
-  let sh=J(0,-0.75);
-  let e1=J(-1.0,-1.0), w1=J(-1.7,-1.4); plineW(ctx,[sh,e1,w1]);
-  let e2=J(0.9,-1.15), w2=J(1.6,-1.55); plineW(ctx,[sh,e2,w2]);
-  // legs bent (box) trailing
-  let k1=J(-0.2,1.4), f1=J(-1.1,1.3); plineW(ctx,[hip,k1,f1]);
-  let k2=J(0.6,1.45), f2=J(1.4,1.7); plineW(ctx,[hip,k2,f2]);
+  const J=(lx,ly)=>R(fx,fy,lx*u*s,ly*u*s,ca,sa);
+  const fl=Math.sin(frame*0.4)*0.12;
+  const limb=Math.max(3,u*s*0.42);
+  // rig on the back (drawn first, behind torso)
+  rigPack(ctx,J,u,0,-0.1);
+  // torso jumpsuit (tapered) + shade
+  ctx.fillStyle=SUIT; poly(ctx,[J(-0.62,-0.9),J(0.62,-0.9),J(0.5,0.7),J(-0.5,0.7)]);
+  ctx.fillStyle=SUIT_D; poly(ctx,[J(0.05,-0.9),J(0.62,-0.9),J(0.5,0.7),J(0.05,0.7)]);
+  // arms (upper out, forearm fwd, bent) + gloves
+  cap(ctx,J(-0.55,-0.72),J(-1.45,-1.0-fl),limb,SUIT); cap(ctx,J(-1.45,-1.0-fl),J(-1.75,-1.95-fl),limb*0.85,SUIT);
+  cap(ctx,J(0.55,-0.72),J(1.45,-1.0+fl),limb,SUIT); cap(ctx,J(1.45,-1.0+fl),J(1.75,-1.95+fl),limb*0.85,SUIT);
+  ctx.fillStyle=DARK; let gl=J(-1.75,-1.95-fl),gr=J(1.75,-1.95+fl); circ(ctx,gl[0],gl[1],limb*0.5);circ(ctx,gr[0],gr[1],limb*0.5);
+  // legs (thigh out, shin bent) + booties
+  cap(ctx,J(-0.45,0.6),J(-1.2,1.55+fl),limb,SUIT); cap(ctx,J(-1.2,1.55+fl),J(-0.72,2.5+fl),limb*0.85,SUIT);
+  cap(ctx,J(0.45,0.6),J(1.2,1.55-fl),limb,SUIT); cap(ctx,J(1.2,1.55-fl),J(0.72,2.5-fl),limb*0.85,SUIT);
+  ctx.fillStyle=DARK; let bl=J(-0.72,2.5+fl),br=J(0.72,2.5-fl); circ(ctx,bl[0],bl[1],limb*0.55);circ(ctx,br[0],br[1],limb*0.55);
+  // helmet + visor (on top)
+  const head=J(0,-1.45);
+  ctx.fillStyle=HELM; circ(ctx,head[0],head[1],u*s*0.52);
+  ctx.fillStyle=HELM_HI; ctx.beginPath();ctx.arc(head[0],head[1],u*s*0.52,Math.PI*1.05,Math.PI*1.55);ctx.lineTo(head[0],head[1]);ctx.fill();
+  ctx.fillStyle=VISOR; const vis=J(0,-1.58); ctx.beginPath();ctx.ellipse(vis[0],vis[1],u*s*0.34,u*s*0.2,sa,0,Math.PI);ctx.fill();
 }
 
 function sceneFreefall(ctx,cx,cy,u,h,frame){
-  // strong upward wind streaks
-  const span=Math.round(h*0.6);
-  ctx.lineCap="round";
-  for(let i=0;i<9;i++){
-    const sx=cx+((i-4)*0.95)*u + (i%2?u*0.3:0);
-    const off=((frame*11+i*53)%span);
-    const sy=cy+2.4*u-off;
-    const fade=0.18+0.32*(1-off/span);
-    ctx.strokeStyle="rgba(120,150,200,"+fade.toFixed(2)+")"; ctx.lineWidth=Math.max(1.5,u*0.11);
-    ln(ctx,sx,sy,sx,sy-1.0*u);
+  const span=Math.round(h*0.62);
+  for(let i=0;i<10;i++){
+    const sx=cx+((i-4.5)*0.9)*u; const off=((frame*12+i*51)%span); const sy=cy+2.6*u-off;
+    const fade=0.12+0.34*(1-off/span);
+    ctx.strokeStyle="rgba(130,160,210,"+fade.toFixed(2)+")"; ctx.lineWidth=Math.max(1.5,u*0.1);
+    ln(ctx,sx,sy,sx,sy-1.1*u);
   }
-  // arched belly-to-earth (box / "mantis"), seen from behind & above
-  const fl=Math.sin(frame*0.4)*u*0.12, bob=Math.sin(frame*0.25)*u*0.1, yaw=Math.sin(frame*0.12)*0.08;
-  const ca=Math.cos(yaw),sa=Math.sin(yaw);
-  const fx=cx, fy=cy+bob;
-  const J=(lx,ly)=>R(fx,fy,lx*u,ly*u,ca,sa);
-  ctx.strokeStyle="#fff"; ctx.fillStyle="#fff"; ctx.lineWidth=Math.max(2,u*0.22);
-  // helmet (top, head pointing up-screen)
-  let head=J(0,-1.5); circ(ctx,head[0],head[1],u*0.5);
-  // small goggles accent
-  ctx.fillStyle="#0b1020"; let gg=J(0,-1.62); circ(ctx,gg[0],gg[1],u*0.22); ctx.fillStyle="#fff";
-  // torso (jumpsuit) as a tapered body
-  poly(ctx,[J(-0.5,-0.95),J(0.5,-0.95),J(0.42,0.55),J(-0.42,0.55)]);
-  // arms: upper out to sides, forearms forward & bent (90°)
-  let shL=J(-0.5,-0.8), shR=J(0.5,-0.8);
-  plineW(ctx,[shL, J(-1.5,-1.0+fl), J(-1.7,-1.9+fl)]);
-  plineW(ctx,[shR, J(1.5,-1.0-fl), J(1.7,-1.9-fl)]);
-  // legs: thighs out, shins bent
-  let hipL=J(-0.42,0.55), hipR=J(0.42,0.55);
-  plineW(ctx,[hipL, J(-1.15,1.5-fl), J(-0.7,2.4-fl)]);
-  plineW(ctx,[hipR, J(1.15,1.5+fl), J(0.7,2.4+fl)]);
+  const bob=Math.sin(frame*0.25)*u*0.1, yaw=Math.sin(frame*0.12)*0.07;
+  jumperFlying(ctx,cx,cy+bob,u,yaw,frame,1.12);
 }
 
 function sceneCanopy(ctx,cx,cy,u,frame){
-  const sway=Math.sin(frame*0.07)*0.16; // radians, whole system swings
-  const ca=Math.cos(sway),sa=Math.sin(sway);
-  const ax=cx, ay=cy+1.3*u; // pivot near jumper
+  const sway=Math.sin(frame*0.07)*0.15, ca=Math.cos(sway),sa=Math.sin(sway);
+  const ax=cx, ay=cy+1.4*u;
   const W=(lx,ly)=>R(ax,ay,lx*u,ly*u,ca,sa);
-
-  // ram-air rectangular wing (square), slightly arced, with cells
-  const halfW=2.7, depth=0.62, arc=0.95, wy=-3.2;
-  const top=[], bot=[];
-  const N=8;
-  for(let i=0;i<=N;i++){const t=(i/N)*2-1; const x=t*halfW; const sagY=arc*(1-t*t);
-    top.push(W(x, wy - sagY - depth)); bot.push(W(x, wy - sagY));}
-  // fill canopy
-  ctx.fillStyle="#10D68A";
-  const wing=top.concat(bot.slice().reverse());
-  poly(ctx,wing);
-  // leading edge (front, darker) + cell dividers
-  ctx.strokeStyle="rgba(6,40,28,0.55)"; ctx.lineWidth=Math.max(1,u*0.07);
-  for(let i=0;i<=N;i++){ln(ctx,top[i][0],top[i][1],bot[i][0],bot[i][1]);}
-  // suspension lines cascading from bottom edge to two riser points at the jumper
-  ctx.strokeStyle="rgba(210,220,235,0.7)"; ctx.lineWidth=1;
-  const riserL=W(-0.4,-0.2), riserR=W(0.4,-0.2);
-  for(let i=0;i<=N;i++){const target=(i<=N/2)?riserL:riserR; ln(ctx,bot[i][0],bot[i][1],target[0],target[1]);}
-
-  // jumper in harness, hands up to toggles, legs relaxed
-  ctx.strokeStyle="#fff"; ctx.fillStyle="#fff"; ctx.lineWidth=Math.max(2,u*0.2);
-  const head=W(0,0.35); circ(ctx,head[0],head[1],u*0.4);
-  let neck=W(0,0.7), hip=W(0,1.75);
-  plineW(ctx,[neck,hip]);
-  // arms up to risers
-  plineW(ctx,[W(0,0.85), riserL]); plineW(ctx,[W(0,0.85), riserR]);
-  // legs relaxed, slightly forward
-  plineW(ctx,[hip, W(-0.3,2.6), W(-0.25,3.2)]);
-  plineW(ctx,[hip, W(0.3,2.6), W(0.35,3.2)]);
+  const halfW=2.8, depth=0.66, arc=1.0, wy=-3.4, N=9;
+  const top=[],bot=[];
+  for(let i=0;i<=N;i++){const t=(i/N)*2-1;const x=t*halfW;const sag=arc*(1-t*t);
+    top.push(W(x,wy-sag-depth)); bot.push(W(x,wy-sag));}
+  // cells with alternating shade
+  for(let i=0;i<N;i++){
+    ctx.fillStyle=(i%2)? "#0fbf7c":"#14e093";
+    poly(ctx,[top[i],top[i+1],bot[i+1],bot[i]]);
+  }
+  // bottom skin shade
+  ctx.fillStyle="rgba(4,40,28,0.30)";
+  const skin=bot.slice(); skin.push(W(halfW,(wy)*1));
+  ctx.beginPath();ctx.moveTo(bot[0][0],bot[0][1]);for(let i=1;i<=N;i++)ctx.lineTo(bot[i][0],bot[i][1]);
+  ctx.lineTo(bot[N][0],bot[N][1]+u*0.22);ctx.lineTo(bot[0][0],bot[0][1]+u*0.22);ctx.closePath();ctx.fill();
+  // leading-edge cell openings (front nose) - dark notches
+  ctx.fillStyle="#05281b";
+  for(let i=0;i<N;i++){const m=[(bot[i][0]+bot[i+1][0])/2,(bot[i][1]+bot[i+1][1])/2];
+    poly(ctx,[ [m[0]-u*0.12,m[1]+u*0.02],[m[0]+u*0.12,m[1]+u*0.02],[m[0]+u*0.08,m[1]+u*0.22],[m[0]-u*0.08,m[1]+u*0.22] ]);}
+  // cell ribs
+  ctx.strokeStyle="rgba(5,40,28,0.5)"; ctx.lineWidth=Math.max(1,u*0.05);
+  for(let i=0;i<=N;i++) ln(ctx,top[i][0],top[i][1],bot[i][0],bot[i][1]);
+  // suspension lines cascade to risers + slider
+  const riserL=W(-0.45,-0.1), riserR=W(0.45,-0.1);
+  ctx.strokeStyle="rgba(220,228,240,0.6)"; ctx.lineWidth=1;
+  for(let i=0;i<=N;i++){const tgt=(i<=N/2)?riserL:riserR; ln(ctx,bot[i][0],bot[i][1],tgt[0],tgt[1]);}
+  // slider (rectangle partway down the lines)
+  const slM=W(0,-1.4); ctx.fillStyle="rgba(40,46,58,0.85)";
+  ctx.save();ctx.translate(slM[0],slM[1]);ctx.rotate(sa);ctx.fillRect(-u*1.3,-u*0.12,u*2.6,u*0.24);ctx.restore();
+  // fleshed jumper sitting in harness, hands up to toggles
+  jumperUnderCanopy(ctx,ax,ay,u,ca,sa,riserL,riserR);
+}
+function jumperUnderCanopy(ctx,ax,ay,u,ca,sa,riserL,riserR){
+  const W=(lx,ly)=>R(ax,ay,lx*u,ly*u,ca,sa);
+  const limb=Math.max(3,u*0.4);
+  // legs relaxed forward
+  cap(ctx,W(-0.18,1.5),W(-0.4,2.5),limb,SUIT); cap(ctx,W(-0.4,2.5),W(-0.3,3.2),limb*0.85,SUIT);
+  cap(ctx,W(0.18,1.5),W(0.4,2.5),limb,SUIT); cap(ctx,W(0.4,2.5),W(0.5,3.2),limb*0.85,SUIT);
+  ctx.fillStyle=DARK; let bl=W(-0.3,3.2),br=W(0.5,3.2); circ(ctx,bl[0],bl[1],limb*0.55);circ(ctx,br[0],br[1],limb*0.55);
+  // torso + harness
+  ctx.fillStyle=SUIT; poly(ctx,[W(-0.55,0.55),W(0.55,0.55),W(0.45,1.7),W(-0.45,1.7)]);
+  ctx.strokeStyle=RIG; ctx.lineWidth=Math.max(2,u*0.16);
+  let c1=W(-0.45,0.6),c2=W(0.45,1.6),c3=W(0.45,0.6),c4=W(-0.45,1.6); ln(ctx,c1[0],c1[1],c2[0],c2[1]); ln(ctx,c3[0],c3[1],c4[0],c4[1]);
+  // arms up to toggles
+  cap(ctx,W(-0.5,0.7),riserL,limb*0.9,SUIT); cap(ctx,W(0.5,0.7),riserR,limb*0.9,SUIT);
+  // head + helmet
+  const head=W(0,0.2); ctx.fillStyle=HELM; circ(ctx,head[0],head[1],u*0.42);
+  ctx.fillStyle=VISOR; const vis=W(0,0.12); ctx.beginPath();ctx.ellipse(vis[0],vis[1],u*0.3,u*0.16,sa,0,Math.PI);ctx.fill();
 }
 
 function sceneLanded(ctx,cx,cy,u,frame){
-  const gy=cy+2.2*u;
-  // ground
-  ctx.strokeStyle="#5b6b50"; ctx.lineWidth=Math.max(2,u*0.14);
-  ln(ctx,cx-3.4*u,gy,cx+3.4*u,gy);
-  // grass tufts
-  ctx.strokeStyle="#46603a"; ctx.lineWidth=Math.max(1.5,u*0.08);
+  const gy=cy+2.3*u;
+  // ground band
+  ctx.fillStyle="#2c3a22"; ctx.fillRect(0,gy,SZ,SZ-gy);
+  ctx.strokeStyle="#4a6234"; ctx.lineWidth=Math.max(2,u*0.12); ln(ctx,0,gy,SZ,gy);
+  ctx.strokeStyle="#3c5530"; ctx.lineWidth=Math.max(1.5,u*0.08);
   for(let i=-3;i<=3;i++){const gx=cx+i*1.0*u; ln(ctx,gx,gy,gx-u*0.12,gy-u*0.4); ln(ctx,gx,gy,gx+u*0.12,gy-u*0.4);}
-  // deflated ram-air canopy puddled behind (right), crumpled wavy fabric
-  ctx.fillStyle="#10D68A";
-  poly(ctx,[[cx+0.7*u,gy],[cx+1.3*u,gy-0.55*u],[cx+1.9*u,gy-0.2*u],[cx+2.4*u,gy-0.6*u],[cx+3.1*u,gy-0.15*u],[cx+3.3*u,gy]]);
-  // a few slack lines from canopy to jumper
-  ctx.strokeStyle="rgba(210,220,235,0.55)"; ctx.lineWidth=1;
-  ln(ctx,cx+1.3*u,gy-0.4*u,cx-0.7*u,gy-1.0*u); ln(ctx,cx+2.0*u,gy-0.3*u,cx-0.6*u,gy-1.0*u);
-  // standing jumper (left), slight idle sway
-  const s=Math.sin(frame*0.06)*u*0.05, fx=cx-1.4*u+s;
-  ctx.strokeStyle="#fff"; ctx.fillStyle="#fff"; ctx.lineWidth=Math.max(2,u*0.2);
-  circ(ctx,fx,gy-2.5*u,u*0.42);
-  ln(ctx,fx,gy-2.1*u,fx,gy-1.0*u);          // torso
-  plineW(ctx,[[fx,gy-1.85*u],[fx-0.55*u,gy-1.5*u],[fx-0.7*u,gy-0.95*u]]); // arm
-  plineW(ctx,[[fx,gy-1.85*u],[fx+0.55*u,gy-1.5*u],[fx+0.7*u,gy-0.95*u]]);
-  ln(ctx,fx,gy-1.0*u,fx-0.45*u,gy);          // legs
-  ln(ctx,fx,gy-1.0*u,fx+0.45*u,gy);
+  // deflated ram-air canopy crumpled behind (right), cell shading
+  const base=[[cx+0.6*u,gy],[cx+1.2*u,gy-0.6*u],[cx+1.8*u,gy-0.25*u],[cx+2.4*u,gy-0.65*u],[cx+3.0*u,gy-0.2*u],[cx+3.4*u,gy]];
+  ctx.fillStyle="#0fbf7c"; poly(ctx,base);
+  ctx.strokeStyle="rgba(5,40,28,0.5)"; ctx.lineWidth=Math.max(1,u*0.05);
+  for(let i=1;i<base.length-1;i++) ln(ctx,base[i][0],base[i][1],base[i][0],gy);
+  // slack lines
+  ctx.strokeStyle="rgba(220,228,240,0.5)"; ctx.lineWidth=1;
+  ln(ctx,cx+1.2*u,gy-0.45*u,cx-0.7*u,gy-1.05*u); ln(ctx,cx+2.0*u,gy-0.4*u,cx-0.55*u,gy-1.05*u);
+  // standing fleshed jumper (left)
+  const s=Math.sin(frame*0.06)*u*0.04, fx=cx-1.5*u+s;
+  const limb=Math.max(3,u*0.42);
+  // legs
+  cap(ctx,[fx-0.05*u,gy-1.5*u],[fx-0.3*u,gy-0.75*u],limb,SUIT); cap(ctx,[fx-0.3*u,gy-0.75*u],[fx-0.32*u,gy],limb*0.9,SUIT);
+  cap(ctx,[fx+0.05*u,gy-1.5*u],[fx+0.3*u,gy-0.75*u],limb,SUIT); cap(ctx,[fx+0.3*u,gy-0.75*u],[fx+0.32*u,gy],limb*0.9,SUIT);
+  ctx.fillStyle=DARK; circ(ctx,fx-0.32*u,gy,limb*0.5); circ(ctx,fx+0.32*u,gy,limb*0.5);
+  // torso + rig
+  ctx.fillStyle=SUIT; poly(ctx,[[fx-0.5*u,gy-2.3*u],[fx+0.5*u,gy-2.3*u],[fx+0.42*u,gy-1.45*u],[fx-0.42*u,gy-1.45*u]]);
+  ctx.fillStyle=RIG; poly(ctx,[[fx-0.5*u,gy-2.25*u],[fx-0.72*u,gy-2.2*u],[fx-0.7*u,gy-1.5*u],[fx-0.45*u,gy-1.55*u]]);
+  // arms
+  cap(ctx,[fx-0.4*u,gy-2.15*u],[fx-0.7*u,gy-1.6*u],limb*0.9,SUIT); cap(ctx,[fx-0.7*u,gy-1.6*u],[fx-0.78*u,gy-1.05*u],limb*0.8,SUIT);
+  cap(ctx,[fx+0.4*u,gy-2.15*u],[fx+0.7*u,gy-1.6*u],limb*0.9,SUIT); cap(ctx,[fx+0.7*u,gy-1.6*u],[fx+0.78*u,gy-1.05*u],limb*0.8,SUIT);
+  // head + helmet + visor
+  ctx.fillStyle=HELM; circ(ctx,fx,gy-2.7*u,u*0.42);
+  ctx.fillStyle=VISOR; ctx.beginPath();ctx.ellipse(fx,gy-2.74*u,u*0.3,u*0.16,0,0,Math.PI);ctx.fill();
 }
 
 let frame = 0;
