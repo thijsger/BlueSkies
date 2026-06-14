@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BlueSkies — Watch-animaties preview</title>
+<style>
+  :root{--bg:#05070f;--card:#0b1122;--border:rgba(255,255,255,.08);--muted:#8b97b3}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(60% 50% at 50% -10%,rgba(91,140,255,.16),transparent 70%),var(--bg);
+    color:#eef2fb;font-family:Inter,system-ui,-apple-system,sans-serif;min-height:100vh}
+  header{padding:1.6rem 1.4rem .4rem;text-align:center}
+  h1{margin:0;font-size:1.5rem;letter-spacing:-.02em}
+  h1 .g{background:linear-gradient(135deg,#5b8cff,#9b6bff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  p.sub{color:var(--muted);margin:.3rem 0 0;font-size:.92rem}
+  .grid{display:flex;flex-wrap:wrap;gap:1.2rem;justify-content:center;padding:1.6rem 1.2rem 3rem;max-width:1200px;margin:0 auto}
+  .cell{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0)),var(--card);
+    border:1px solid var(--border);border-radius:20px;padding:1rem;text-align:center}
+  canvas{border-radius:50%;background:#000;display:block;margin:0 auto;box-shadow:0 0 0 6px #11151f,0 18px 40px -18px #000}
+  .name{margin-top:.7rem;font-weight:700;font-size:.9rem}
+  .hint{color:var(--muted);text-align:center;font-size:.85rem;padding:0 1rem 3rem}
+</style>
+</head>
+<body>
+<header>
+  <h1>Blue<span class="g">Skies</span> — watch-animaties</h1>
+  <p class="sub">Live preview van de fase-animaties op het horloge. Op de watch: idle-scherm → ingedrukt houden = demo.</p>
+</header>
+<div class="grid" id="grid"></div>
+<p class="hint">Dit is exact dezelfde tekening-geometrie als op het toestel (round AMOLED).</p>
+
+<script>
+const SZ = 220, PH = ["KLIM","EXIT","VRIJE VAL","CANOPY","GELAND"];
+const PCOL = {KLIM:"#4F8DFF",EXIT:"#F6A23B","VRIJE VAL":"#F43F6E",CANOPY:"#10D68A",GELAND:"#8A93A8"};
+const ctxs = [];
+for (const p of PH) {
+  const cell = document.createElement("div"); cell.className = "cell";
+  const c = document.createElement("canvas"); c.width = SZ; c.height = SZ;
+  cell.appendChild(c);
+  const n = document.createElement("div"); n.className = "name"; n.textContent = p; n.style.color = PCOL[p];
+  cell.appendChild(n);
+  document.getElementById("grid").appendChild(cell);
+  ctxs.push([c.getContext("2d"), p]);
+}
+
+function ln(x,a,b,c,d){x.beginPath();x.moveTo(a,b);x.lineTo(c,d);x.stroke();}
+function poly(x,pts){x.beginPath();x.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)x.lineTo(pts[i][0],pts[i][1]);x.closePath();x.fill();}
+function circ(x,a,b,r){x.beginPath();x.arc(a,b,r,0,7);x.fill();}
+
+function draw(ctx, ph, frame){
+  const w=SZ,h=SZ,cx=w/2,cy=h*0.40,u=w/22;
+  ctx.clearRect(0,0,w,h);
+  ctx.lineCap="round"; ctx.textAlign="center";
+  ctx.fillStyle=PCOL[ph]; ctx.font="bold 13px Inter,sans-serif";
+  ctx.fillText(ph, w/2, h*0.11);
+  ctx.strokeStyle="#fff";
+
+  if(ph=="KLIM"){
+    const drift=Math.sin(frame*0.05)*u*1.2, bob=Math.sin(frame*0.05)*u*0.18, px=cx+drift, py=cy+bob;
+    ctx.fillStyle="#4F8DFF"; for(let i=1;i<=5;i++) circ(ctx,px-i*0.9*u,py+i*0.55*u,u*0.1);
+    ctx.fillStyle="#bbb";
+    poly(ctx,[[px-2.0*u,py+0.5*u],[px+1.6*u,py-0.5*u],[px+2.2*u,py-0.35*u],[px+1.7*u,py+0.05*u],[px-1.7*u,py+1.0*u]]);
+    poly(ctx,[[px-1.9*u,py+0.55*u],[px-2.3*u,py-0.2*u],[px-1.4*u,py+0.45*u]]);
+    ctx.fillStyle="#888"; poly(ctx,[[px-0.2*u,py+0.2*u],[px+0.6*u,py+0.1*u],[px-0.3*u,py+1.1*u],[px-1.0*u,py+1.0*u]]);
+    ctx.fillStyle="#4F8DFF"; circ(ctx,px+0.4*u,py-0.05*u,u*0.22);
+  } else if(ph=="EXIT"){
+    ctx.fillStyle="#bbb"; const px=cx-2.0*u,py=cy-2.2*u;
+    poly(ctx,[[px-1.2*u,py+0.3*u],[px+1.0*u,py-0.2*u],[px+1.4*u,py],[px-1.0*u,py+0.6*u]]);
+    const sw=Math.sin(frame*0.5),fx=cx+0.6*u,fy=cy+0.4*u;
+    ctx.fillStyle="#fff"; ctx.lineWidth=Math.max(2,u*0.16);
+    circ(ctx,fx,fy-1.1*u,u*0.42);
+    ln(ctx,fx,fy-0.7*u,fx,fy+0.5*u);
+    ln(ctx,fx,fy-0.4*u,fx-1.1*u,fy-0.4*u+sw*u); ln(ctx,fx,fy-0.4*u,fx+1.1*u,fy-0.4*u-sw*u);
+    ln(ctx,fx,fy+0.5*u,fx-0.7*u,fy+1.4*u-sw*0.6*u); ln(ctx,fx,fy+0.5*u,fx+0.7*u,fy+1.4*u+sw*0.6*u);
+  } else if(ph=="VRIJE VAL"){
+    ctx.strokeStyle="#3A5170"; ctx.lineWidth=Math.max(2,u*0.12); const span=Math.round(h*0.5);
+    for(let i=0;i<7;i++){const sx=cx+(i-3)*1.05*u;const off=((frame*9+i*47)%span);const sy=cy+2.0*u-off;ln(ctx,sx,sy,sx,sy-0.7*u);}
+    const fl=Math.sin(frame*0.45)*u*0.14,bob=Math.sin(frame*0.3)*u*0.12,fx=cx,fy=cy+bob;
+    ctx.strokeStyle="#fff"; ctx.fillStyle="#fff"; ctx.lineWidth=Math.max(2,u*0.2);
+    circ(ctx,fx,fy-1.3*u,u*0.5);
+    ln(ctx,fx,fy-0.85*u,fx,fy+0.45*u);
+    ln(ctx,fx,fy-0.7*u,fx-1.35*u,fy-1.35*u-fl); ln(ctx,fx,fy-0.7*u,fx+1.35*u,fy-1.35*u+fl);
+    ln(ctx,fx,fy+0.45*u,fx-0.95*u,fy+1.55*u+fl); ln(ctx,fx,fy+0.45*u,fx+0.95*u,fy+1.55*u-fl);
+  } else if(ph=="CANOPY"){
+    const sway=Math.sin(frame*0.09)*u*0.9,ccx=cx+sway*0.5,ccy=cy-1.9*u,fcx=cx+sway;
+    ctx.fillStyle="#10D68A"; const dome=[]; const n=12;
+    for(let i=0;i<=n;i++){const a=Math.PI*i/n;dome.push([ccx-Math.cos(a)*1.9*u,ccy-Math.sin(a)*1.0*u]);}
+    dome.push([ccx+1.9*u,ccy+0.15*u]); dome.push([ccx-1.9*u,ccy+0.15*u]); poly(ctx,dome);
+    ctx.strokeStyle="#bbb"; ctx.lineWidth=Math.max(1,u*0.06);
+    ln(ctx,ccx-1.7*u,ccy+0.1*u,fcx-0.3*u,cy-0.1*u); ln(ctx,ccx-0.55*u,ccy+0.1*u,fcx-0.15*u,cy-0.1*u);
+    ln(ctx,ccx+0.55*u,ccy+0.1*u,fcx+0.15*u,cy-0.1*u); ln(ctx,ccx+1.7*u,ccy+0.1*u,fcx+0.3*u,cy-0.1*u);
+    ctx.strokeStyle="#fff"; ctx.fillStyle="#fff"; ctx.lineWidth=Math.max(2,u*0.18);
+    circ(ctx,fcx,cy+0.15*u,u*0.4);
+    ln(ctx,fcx,cy+0.45*u,fcx,cy+1.4*u);
+    ln(ctx,fcx,cy+0.55*u,fcx-0.35*u,cy-0.1*u); ln(ctx,fcx,cy+0.55*u,fcx+0.35*u,cy-0.1*u);
+    ln(ctx,fcx,cy+1.4*u,fcx-0.3*u,cy+2.1*u); ln(ctx,fcx,cy+1.4*u,fcx+0.3*u,cy+2.1*u);
+  } else {
+    const gy=cy+1.9*u; ctx.strokeStyle="#888"; ctx.lineWidth=Math.max(2,u*0.12);
+    ln(ctx,cx-3.2*u,gy,cx+3.2*u,gy);
+    ctx.fillStyle="#10D68A"; poly(ctx,[[cx+0.8*u,gy],[cx+1.4*u,gy-0.5*u],[cx+2.2*u,gy-0.3*u],[cx+3.0*u,gy]]);
+    const s=Math.sin(frame*0.08)*u*0.05,fx=cx-1.3*u+s;
+    ctx.fillStyle="#fff"; ctx.strokeStyle="#fff"; ctx.lineWidth=Math.max(2,u*0.18);
+    circ(ctx,fx,gy-2.4*u,u*0.4);
+    ln(ctx,fx,gy-2.0*u,fx,gy-0.9*u);
+    ln(ctx,fx,gy-1.7*u,fx-0.5*u,gy-1.1*u); ln(ctx,fx,gy-1.7*u,fx+0.5*u,gy-1.1*u);
+    ln(ctx,fx,gy-0.9*u,fx-0.45*u,gy); ln(ctx,fx,gy-0.9*u,fx+0.45*u,gy);
+  }
+  // stat hints
+  ctx.fillStyle="#fff"; ctx.font="10px Inter,sans-serif";
+  const da={KLIM:"3500 m",EXIT:"4000 m","VRIJE VAL":"2200 m",CANOPY:"700 m",GELAND:"0 m"};
+  ctx.fillText(da[ph],w*0.30,h*0.76); ctx.fillText("150 bpm",w*0.70,h*0.76);
+}
+
+let frame = 0;
+// advance at ~15 fps to match the watch's animation cadence
+setInterval(() => { frame++; for (const [ctx, p] of ctxs) draw(ctx, p, frame); }, 67);
+</script>
+</body>
+</html>

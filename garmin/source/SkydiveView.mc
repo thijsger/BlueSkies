@@ -23,6 +23,33 @@ class SkydiveView extends WatchUi.View {
     var mAnimTimer as Timer.Timer? = null;
     var mFrame as Number = 0;
 
+    // demo mode: auto-cycle every phase so the animations are viewable without jumping
+    var mDemo as Boolean = false;
+    var mDemoPhase as Number = 0;
+    var mDemoTimer as Timer.Timer? = null;
+
+    function startDemo() as Void {
+        if (mRecorder.isRecording()) { return; }
+        mDemo = true;
+        mDemoPhase = CLIMB;
+        ensureAnim();
+        if (mDemoTimer != null) { mDemoTimer.stop(); }
+        mDemoTimer = new Timer.Timer();
+        mDemoTimer.start(method(:onDemoTick), 3500, true);
+        WatchUi.requestUpdate();
+    }
+    function onDemoTick() as Void {
+        mDemoPhase += 1;
+        if (mDemoPhase > LANDED) { stopDemo(); }
+        else { WatchUi.requestUpdate(); }
+    }
+    function stopDemo() as Void {
+        mDemo = false;
+        if (mDemoTimer != null) { mDemoTimer.stop(); mDemoTimer = null; }
+        if (!mRecorder.isRecording()) { stopAnim(); }
+        WatchUi.requestUpdate();
+    }
+
     function initialize() {
         View.initialize();
         mRecorder = new JumpRecorder();
@@ -54,13 +81,31 @@ class SkydiveView extends WatchUi.View {
         dc.clear();
         var w = dc.getWidth();
         var h = dc.getHeight();
-        if (mRecorder.isRecording()) {
+        if (mDemo) {
             ensureAnim();
-            drawRecording(dc, w, h);
+            drawScene(dc, w, h, mDemoPhase, true);
+        } else if (mRecorder.isRecording()) {
+            ensureAnim();
+            drawScene(dc, w, h, mRecorder.getPhase(), false);
         } else {
             stopAnim();
             drawIdle(dc, w, h);
         }
+    }
+
+    function labelFor(ph as Number) as String {
+        if (ph == CLIMB) { return "KLIM"; }
+        if (ph == EXIT) { return "EXIT"; }
+        if (ph == FREEFALL) { return "VRIJE VAL"; }
+        if (ph == CANOPY) { return "CANOPY"; }
+        return "GELAND";
+    }
+    function colorFor(ph as Number) as Number {
+        if (ph == CLIMB) { return 0x4F8DFF; }
+        if (ph == EXIT) { return 0xF6A23B; }
+        if (ph == FREEFALL) { return 0xF43F6E; }
+        if (ph == CANOPY) { return 0x10D68A; }
+        return 0x8A93A8;
     }
 
     // ---------------------------------------------------------- idle
@@ -94,19 +139,19 @@ class SkydiveView extends WatchUi.View {
             dc.drawText(w / 2, h * 0.72, Graphics.FONT_XTINY, msg, Graphics.TEXT_JUSTIFY_CENTER);
         }
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(w / 2, h * 0.85, Graphics.FONT_XTINY, "Tik = start", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(w / 2, h * 0.83, Graphics.FONT_XTINY, "Tik = start", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(w / 2, h * 0.91, Graphics.FONT_XTINY, "Hou vast = demo", Graphics.TEXT_JUSTIFY_CENTER);
     }
 
-    // ---------------------------------------------------------- recording
-    function drawRecording(dc as Graphics.Dc, w as Number, h as Number) as Void {
-        var ph = mRecorder.getPhase();
+    // ---------------------------------------------------------- recording / demo
+    function drawScene(dc as Graphics.Dc, w as Number, h as Number, ph as Number, isDemo as Boolean) as Void {
         var cx = w / 2.0;
         var cy = h * 0.40;
         var u = w / 22.0;
 
-        // phase label
-        dc.setColor(mRecorder.getPhaseColor(), Graphics.COLOR_TRANSPARENT);
-        dc.drawText(w / 2, h * 0.07, Graphics.FONT_TINY, mRecorder.getPhaseLabel(), Graphics.TEXT_JUSTIFY_CENTER);
+        dc.setColor(colorFor(ph), Graphics.COLOR_TRANSPARENT);
+        dc.drawText(w / 2, h * 0.07, Graphics.FONT_TINY, labelFor(ph) + (isDemo ? "  (demo)" : ""), Graphics.TEXT_JUSTIFY_CENTER);
 
         if (ph == CLIMB) { sceneClimb(dc, cx, cy, u); }
         else if (ph == EXIT) { sceneExit(dc, cx, cy, u); }
@@ -116,15 +161,27 @@ class SkydiveView extends WatchUi.View {
 
         // compact stats
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        var alt = mRecorder.getCurrentAlt();
-        var altTxt = (alt == null) ? "-- m" : alt.format("%d") + " m";
-        var hr = mRecorder.getCurrentHr();
-        var hrTxt = (hr == null) ? "-- bpm" : hr.format("%d") + " bpm";
+        var altTxt; var hrTxt; var ffTxt;
+        if (isDemo) {
+            var demoAlt = [3500, 4000, 2200, 700, 0];
+            altTxt = demoAlt[ph].toString() + " m";
+            hrTxt = "150 bpm";
+            ffTxt = (ph >= FREEFALL) ? "VV 12s" : "VV 0s";
+        } else {
+            var alt = mRecorder.getCurrentAlt();
+            altTxt = (alt == null) ? "-- m" : alt.format("%d") + " m";
+            var hr = mRecorder.getCurrentHr();
+            hrTxt = (hr == null) ? "-- bpm" : hr.format("%d") + " bpm";
+            ffTxt = "VV " + mRecorder.getFreefallTime().format("%d") + "s";
+        }
         dc.drawText(w * 0.30, h * 0.74, Graphics.FONT_XTINY, altTxt, Graphics.TEXT_JUSTIFY_CENTER);
         dc.drawText(w * 0.70, h * 0.74, Graphics.FONT_XTINY, hrTxt, Graphics.TEXT_JUSTIFY_CENTER);
-        dc.drawText(w / 2, h * 0.80, Graphics.FONT_XTINY, "VV " + mRecorder.getFreefallTime().format("%d") + "s", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(w / 2, h * 0.80, Graphics.FONT_XTINY, ffTxt, Graphics.TEXT_JUSTIFY_CENTER);
 
-        if (mStopArmed) {
+        if (isDemo) {
+            dc.setColor(Graphics.COLOR_YELLOW, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(w / 2, h * 0.90, Graphics.FONT_XTINY, "Tik = stop demo", Graphics.TEXT_JUSTIFY_CENTER);
+        } else if (mStopArmed) {
             dc.setColor(Graphics.COLOR_YELLOW, Graphics.COLOR_TRANSPARENT);
             dc.drawText(w / 2, h * 0.90, Graphics.FONT_XTINY, "Tik nogmaals om te stoppen", Graphics.TEXT_JUSTIFY_CENTER);
         } else {
