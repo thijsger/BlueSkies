@@ -1,8 +1,8 @@
 export const PHASE_COLORS = {
-  climb: "#4f8dff",
-  exit: "#f6a23b",
-  freefall: "#f43f6e",
-  canopy: "#10d68a",
+  climb: "#2f6bff",
+  exit: "#e8870f",
+  freefall: "#ec2d62",
+  canopy: "#08b97a",
   landed: "#8a93a8",
 };
 export const PHASE_LABEL = {
@@ -15,12 +15,12 @@ export const PHASE_LABEL = {
 
 // metric accent colors (per spec)
 export const METRIC_COLOR = {
-  altitude: "#4f8dff",
-  freefall: "#f43f6e",
-  canopy: "#10d68a",
-  heart: "#ff5d8f",
-  speed: "#f6a23b",
-  track: "#9b6bff",
+  altitude: "#2f6bff",
+  freefall: "#ec2d62",
+  canopy: "#08b97a",
+  heart: "#f0508a",
+  speed: "#e8870f",
+  track: "#7c52ff",
 };
 
 export function fmtClock(sec) {

@@ -1,19 +1,21 @@
 import { PHASE_COLORS, METRIC_COLOR } from "./util.js";
 
-// ---- global theming ----
-Chart.defaults.color = "#8b97b3";
+// ---- global theming (light) ----
+const AXIS = "#7a88a3", GRID = "rgba(15,23,42,0.07)", BORDER = "rgba(15,23,42,0.14)";
+Chart.defaults.color = AXIS;
 Chart.defaults.font.family = "Inter, system-ui, sans-serif";
 Chart.defaults.font.size = 11;
 Chart.defaults.plugins.legend.display = false;
 const TT = Chart.defaults.plugins.tooltip;
-TT.backgroundColor = "rgba(8,12,24,0.96)";
-TT.borderColor = "rgba(255,255,255,0.12)";
+TT.backgroundColor = "rgba(255,255,255,0.98)";
+TT.borderColor = "rgba(15,23,42,0.12)";
 TT.borderWidth = 1;
 TT.padding = 10;
 TT.cornerRadius = 10;
-TT.titleColor = "#eef2fb";
-TT.bodyColor = "#c2cce0";
+TT.titleColor = "#0f1b33";
+TT.bodyColor = "#42506b";
 TT.displayColors = false;
+TT.titleFont = { weight: "700" };
 
 function hexA(hex, a) {
   const n = parseInt(hex.slice(1), 16);
@@ -90,15 +92,15 @@ const markersPlugin = {
       const py = ys.getPixelForValue(pm.y);
       ctx.save();
       ctx.fillStyle = pm.color;
-      ctx.strokeStyle = "rgba(255,255,255,0.9)";
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
       ctx.arc(px, py, 4.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
       if (pm.label) {
         ctx.font = "700 10px Inter, sans-serif";
-        ctx.fillStyle = "#eef2fb";
+        ctx.fillStyle = "#0f1b33";
         ctx.textAlign = "center";
         const ty = py < chartArea.top + 20 ? py + 16 : py - 10;
         ctx.fillText(pm.label, px, ty);
@@ -161,15 +163,15 @@ const baseOpts = (jump, yTitle, extra = {}) => ({
   scales: {
     x: {
       type: "linear",
-      title: { display: true, text: "Tijd (s)", color: "#5d6a87", font: { size: 10 } },
-      ticks: { color: "#5d6a87", maxTicksLimit: 8 },
-      grid: { color: "rgba(255,255,255,0.04)" },
-      border: { color: "rgba(255,255,255,0.08)" },
+      title: { display: true, text: "Tijd (s)", color: AXIS, font: { size: 10 } },
+      ticks: { color: AXIS, maxTicksLimit: 8 },
+      grid: { color: GRID },
+      border: { color: BORDER },
     },
     y: {
-      title: { display: !!yTitle, text: yTitle, color: "#5d6a87", font: { size: 10 } },
-      ticks: { color: "#5d6a87", maxTicksLimit: 6 },
-      grid: { color: "rgba(255,255,255,0.04)" },
+      title: { display: !!yTitle, text: yTitle, color: AXIS, font: { size: 10 } },
+      ticks: { color: AXIS, maxTicksLimit: 6 },
+      grid: { color: GRID },
       border: { display: false },
     },
   },
@@ -249,10 +251,10 @@ export function combinedChart(canvas, jump) {
   const alt = jump.series.map((s) => ({ x: s.t, y: s.alt }));
   const vs = jump.series.map((s) => ({ x: s.t, y: s.fallRate }));
   const opts = baseOpts(jump, null, { events: phaseEvents(jump) });
-  opts.scales.y = { ...opts.scales.y, title: { display: true, text: "hoogte (m)", color: cAlt, font: { size: 10 } }, ticks: { color: "#5d6a87", maxTicksLimit: 6 } };
+  opts.scales.y = { ...opts.scales.y, title: { display: true, text: "hoogte (m)", color: cAlt, font: { size: 10 } }, ticks: { color: AXIS, maxTicksLimit: 6 } };
   opts.scales.y1 = {
     position: "right", title: { display: true, text: "daalsnelheid (m/s)", color: cVs, font: { size: 10 } },
-    ticks: { color: "#5d6a87", maxTicksLimit: 6 }, grid: { drawOnChartArea: false }, border: { display: false },
+    ticks: { color: AXIS, maxTicksLimit: 6 }, grid: { drawOnChartArea: false }, border: { display: false },
   };
   return new Chart(canvas, {
     type: "line",
@@ -276,8 +278,8 @@ export function jumpsPerMonthChart(canvas, perMonth) {
       responsive: true, maintainAspectRatio: false, animation: false,
       plugins: { tooltip: { callbacks: { label: (i) => `${i.parsed.y} sprongen` } } },
       scales: {
-        x: { ticks: { color: "#5d6a87" }, grid: { display: false }, border: { color: "rgba(255,255,255,0.08)" } },
-        y: { ticks: { color: "#5d6a87", precision: 0 }, grid: { color: "rgba(255,255,255,0.04)" }, beginAtZero: true, border: { display: false } },
+        x: { ticks: { color: AXIS }, grid: { display: false }, border: { color: BORDER } },
+        y: { ticks: { color: AXIS, precision: 0 }, grid: { color: GRID }, beginAtZero: true, border: { display: false } },
       },
     },
   });
@@ -294,8 +296,8 @@ export function freefallAccrualChart(canvas, accrual) {
       responsive: true, maintainAspectRatio: false, animation: false,
       plugins: { tooltip: { callbacks: { label: (i) => `${i.parsed.y.toFixed(1)} min totaal` } } },
       scales: {
-        x: { ticks: { color: "#5d6a87", maxRotation: 60, maxTicksLimit: 10 }, grid: { color: "rgba(255,255,255,0.04)" }, border: { color: "rgba(255,255,255,0.08)" } },
-        y: { title: { display: true, text: "minuten", color: "#5d6a87", font: { size: 10 } }, ticks: { color: "#5d6a87" }, grid: { color: "rgba(255,255,255,0.04)" }, beginAtZero: true, border: { display: false } },
+        x: { ticks: { color: AXIS, maxRotation: 60, maxTicksLimit: 10 }, grid: { color: GRID }, border: { color: BORDER } },
+        y: { title: { display: true, text: "minuten", color: AXIS, font: { size: 10 } }, ticks: { color: AXIS }, grid: { color: GRID }, beginAtZero: true, border: { display: false } },
       },
     },
   });
@@ -315,8 +317,8 @@ export function byTypeChart(canvas, byType) {
       responsive: true, maintainAspectRatio: false, animation: false,
       plugins: { tooltip: { callbacks: { label: (i) => `${i.parsed.y} sprongen` } } },
       scales: {
-        x: { ticks: { color: "#5d6a87" }, grid: { display: false }, border: { color: "rgba(255,255,255,0.08)" } },
-        y: { ticks: { color: "#5d6a87", precision: 0 }, grid: { color: "rgba(255,255,255,0.04)" }, beginAtZero: true, border: { display: false } },
+        x: { ticks: { color: AXIS }, grid: { display: false }, border: { color: BORDER } },
+        y: { ticks: { color: AXIS, precision: 0 }, grid: { color: GRID }, beginAtZero: true, border: { display: false } },
       },
     },
   });
@@ -332,8 +334,8 @@ export function byDropzoneChart(canvas, byDz) {
       responsive: true, maintainAspectRatio: false, animation: false,
       plugins: { tooltip: { callbacks: { label: (i) => `${i.parsed.x} sprongen` } } },
       scales: {
-        x: { ticks: { color: "#5d6a87", precision: 0 }, grid: { color: "rgba(255,255,255,0.04)" }, beginAtZero: true, border: { display: false } },
-        y: { ticks: { color: "#8b97b3" }, grid: { display: false }, border: { color: "rgba(255,255,255,0.08)" } },
+        x: { ticks: { color: AXIS, precision: 0 }, grid: { color: GRID }, beginAtZero: true, border: { display: false } },
+        y: { ticks: { color: "#8b97b3" }, grid: { display: false }, border: { color: BORDER } },
       },
     },
   });
@@ -348,8 +350,8 @@ export function exitDistributionChart(canvas, buckets) {
       responsive: true, maintainAspectRatio: false, animation: false,
       plugins: { tooltip: { callbacks: { label: (i) => `${i.parsed.y} sprongen`, title: (i) => `${i[0].label} m` } } },
       scales: {
-        x: { ticks: { color: "#5d6a87" }, grid: { display: false }, border: { color: "rgba(255,255,255,0.08)" } },
-        y: { ticks: { color: "#5d6a87", precision: 0 }, grid: { color: "rgba(255,255,255,0.04)" }, beginAtZero: true, border: { display: false } },
+        x: { ticks: { color: AXIS }, grid: { display: false }, border: { color: BORDER } },
+        y: { ticks: { color: AXIS, precision: 0 }, grid: { color: GRID }, beginAtZero: true, border: { display: false } },
       },
     },
   });

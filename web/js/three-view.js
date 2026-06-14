@@ -29,7 +29,7 @@ export function mount3D(container, scrubInput, playBtn, jump) {
 
   // scene
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0a0e14);
+  scene.background = new THREE.Color(0xe7eef8);
 
   const width = container.clientWidth || 800;
   const height = 460;
@@ -59,12 +59,12 @@ export function mount3D(container, scrubInput, playBtn, jump) {
   // ground plane at y=0 (landing level)
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(span * 3, span * 3),
-    new THREE.MeshBasicMaterial({ color: 0x12331f, transparent: true, opacity: 0.5, side: THREE.DoubleSide })
+    new THREE.MeshBasicMaterial({ color: 0xcfe0d2, transparent: true, opacity: 0.55, side: THREE.DoubleSide })
   );
   ground.rotation.x = -Math.PI / 2;
   ground.position.set(center.x, 0, center.z);
   scene.add(ground);
-  const grid = new THREE.GridHelper(span * 3, 30, 0x2f4a3a, 0x1b2b22);
+  const grid = new THREE.GridHelper(span * 3, 30, 0x9bb3a4, 0xc4d2c8);
   grid.position.set(center.x, 0.1, center.z);
   scene.add(grid);
 
@@ -92,7 +92,7 @@ export function mount3D(container, scrubInput, playBtn, jump) {
   if (dropPos.length) {
     const dg = new THREE.BufferGeometry();
     dg.setAttribute("position", new THREE.Float32BufferAttribute(dropPos, 3));
-    scene.add(new THREE.LineSegments(dg, new THREE.LineBasicMaterial({ color: 0x33414d, transparent: true, opacity: 0.4 })));
+    scene.add(new THREE.LineSegments(dg, new THREE.LineBasicMaterial({ color: 0x9aa6bb, transparent: true, opacity: 0.45 })));
   }
 
   // markers
@@ -117,7 +117,7 @@ export function mount3D(container, scrubInput, playBtn, jump) {
   }
 
   // animated position marker
-  const pos = sphere(0xffffff, markerSize * 1.2);
+  const pos = sphere(0x0f1b33, markerSize * 1.2);
   pos.position.copy(pts[0]);
   scene.add(pos);
 
