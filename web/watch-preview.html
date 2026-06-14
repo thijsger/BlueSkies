@@ -27,11 +27,12 @@
   <p class="sub">Live preview van de fase-animaties op het horloge. Op de watch: idle-scherm → ingedrukt houden = demo.</p>
 </header>
 <div class="grid" id="grid"></div>
-<p class="hint">Dit is exact dezelfde tekening-geometrie als op het toestel (round AMOLED).</p>
+<p class="hint">Exact dezelfde tekening-geometrie als op het toestel (round AMOLED).</p>
 
 <script>
 const SZ = 220, PH = ["KLIM","EXIT","VRIJE VAL","CANOPY","GELAND"];
 const PCOL = {KLIM:"#4F8DFF",EXIT:"#F6A23B","VRIJE VAL":"#F43F6E",CANOPY:"#10D68A",GELAND:"#8A93A8"};
+const SKY = {KLIM:"#0a1426",EXIT:"#0a1426","VRIJE VAL":"#0b1020",CANOPY:"#0a1730",GELAND:"#0c1422"};
 const ctxs = [];
 for (const p of PH) {
   const cell = document.createElement("div"); cell.className = "cell";
@@ -45,74 +46,231 @@ for (const p of PH) {
 
 function ln(x,a,b,c,d){x.beginPath();x.moveTo(a,b);x.lineTo(c,d);x.stroke();}
 function poly(x,pts){x.beginPath();x.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)x.lineTo(pts[i][0],pts[i][1]);x.closePath();x.fill();}
+function plineW(x,pts){x.beginPath();x.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)x.lineTo(pts[i][0],pts[i][1]);x.stroke();}
 function circ(x,a,b,r){x.beginPath();x.arc(a,b,r,0,7);x.fill();}
+// rotate local (lx,ly) around (ox,oy) by ca/sa
+function R(ox,oy,lx,ly,ca,sa){return [ox+lx*ca-ly*sa, oy+lx*sa+ly*ca];}
 
 function draw(ctx, ph, frame){
   const w=SZ,h=SZ,cx=w/2,cy=h*0.40,u=w/22;
+  // sky tint background inside the dial
   ctx.clearRect(0,0,w,h);
-  ctx.lineCap="round"; ctx.textAlign="center";
+  ctx.fillStyle=SKY[ph]; ctx.fillRect(0,0,w,h);
+  ctx.lineCap="round"; ctx.lineJoin="round"; ctx.textAlign="center";
   ctx.fillStyle=PCOL[ph]; ctx.font="bold 13px Inter,sans-serif";
   ctx.fillText(ph, w/2, h*0.11);
   ctx.strokeStyle="#fff";
 
-  if(ph=="KLIM"){
-    const drift=Math.sin(frame*0.05)*u*1.2, bob=Math.sin(frame*0.05)*u*0.18, px=cx+drift, py=cy+bob;
-    ctx.fillStyle="#4F8DFF"; for(let i=1;i<=5;i++) circ(ctx,px-i*0.9*u,py+i*0.55*u,u*0.1);
-    ctx.fillStyle="#bbb";
-    poly(ctx,[[px-2.0*u,py+0.5*u],[px+1.6*u,py-0.5*u],[px+2.2*u,py-0.35*u],[px+1.7*u,py+0.05*u],[px-1.7*u,py+1.0*u]]);
-    poly(ctx,[[px-1.9*u,py+0.55*u],[px-2.3*u,py-0.2*u],[px-1.4*u,py+0.45*u]]);
-    ctx.fillStyle="#888"; poly(ctx,[[px-0.2*u,py+0.2*u],[px+0.6*u,py+0.1*u],[px-0.3*u,py+1.1*u],[px-1.0*u,py+1.0*u]]);
-    ctx.fillStyle="#4F8DFF"; circ(ctx,px+0.4*u,py-0.05*u,u*0.22);
-  } else if(ph=="EXIT"){
-    ctx.fillStyle="#bbb"; const px=cx-2.0*u,py=cy-2.2*u;
-    poly(ctx,[[px-1.2*u,py+0.3*u],[px+1.0*u,py-0.2*u],[px+1.4*u,py],[px-1.0*u,py+0.6*u]]);
-    const sw=Math.sin(frame*0.5),fx=cx+0.6*u,fy=cy+0.4*u;
-    ctx.fillStyle="#fff"; ctx.lineWidth=Math.max(2,u*0.16);
-    circ(ctx,fx,fy-1.1*u,u*0.42);
-    ln(ctx,fx,fy-0.7*u,fx,fy+0.5*u);
-    ln(ctx,fx,fy-0.4*u,fx-1.1*u,fy-0.4*u+sw*u); ln(ctx,fx,fy-0.4*u,fx+1.1*u,fy-0.4*u-sw*u);
-    ln(ctx,fx,fy+0.5*u,fx-0.7*u,fy+1.4*u-sw*0.6*u); ln(ctx,fx,fy+0.5*u,fx+0.7*u,fy+1.4*u+sw*0.6*u);
-  } else if(ph=="VRIJE VAL"){
-    ctx.strokeStyle="#3A5170"; ctx.lineWidth=Math.max(2,u*0.12); const span=Math.round(h*0.5);
-    for(let i=0;i<7;i++){const sx=cx+(i-3)*1.05*u;const off=((frame*9+i*47)%span);const sy=cy+2.0*u-off;ln(ctx,sx,sy,sx,sy-0.7*u);}
-    const fl=Math.sin(frame*0.45)*u*0.14,bob=Math.sin(frame*0.3)*u*0.12,fx=cx,fy=cy+bob;
-    ctx.strokeStyle="#fff"; ctx.fillStyle="#fff"; ctx.lineWidth=Math.max(2,u*0.2);
-    circ(ctx,fx,fy-1.3*u,u*0.5);
-    ln(ctx,fx,fy-0.85*u,fx,fy+0.45*u);
-    ln(ctx,fx,fy-0.7*u,fx-1.35*u,fy-1.35*u-fl); ln(ctx,fx,fy-0.7*u,fx+1.35*u,fy-1.35*u+fl);
-    ln(ctx,fx,fy+0.45*u,fx-0.95*u,fy+1.55*u+fl); ln(ctx,fx,fy+0.45*u,fx+0.95*u,fy+1.55*u-fl);
-  } else if(ph=="CANOPY"){
-    const sway=Math.sin(frame*0.09)*u*0.9,ccx=cx+sway*0.5,ccy=cy-1.9*u,fcx=cx+sway;
-    ctx.fillStyle="#10D68A"; const dome=[]; const n=12;
-    for(let i=0;i<=n;i++){const a=Math.PI*i/n;dome.push([ccx-Math.cos(a)*1.9*u,ccy-Math.sin(a)*1.0*u]);}
-    dome.push([ccx+1.9*u,ccy+0.15*u]); dome.push([ccx-1.9*u,ccy+0.15*u]); poly(ctx,dome);
-    ctx.strokeStyle="#bbb"; ctx.lineWidth=Math.max(1,u*0.06);
-    ln(ctx,ccx-1.7*u,ccy+0.1*u,fcx-0.3*u,cy-0.1*u); ln(ctx,ccx-0.55*u,ccy+0.1*u,fcx-0.15*u,cy-0.1*u);
-    ln(ctx,ccx+0.55*u,ccy+0.1*u,fcx+0.15*u,cy-0.1*u); ln(ctx,ccx+1.7*u,ccy+0.1*u,fcx+0.3*u,cy-0.1*u);
-    ctx.strokeStyle="#fff"; ctx.fillStyle="#fff"; ctx.lineWidth=Math.max(2,u*0.18);
-    circ(ctx,fcx,cy+0.15*u,u*0.4);
-    ln(ctx,fcx,cy+0.45*u,fcx,cy+1.4*u);
-    ln(ctx,fcx,cy+0.55*u,fcx-0.35*u,cy-0.1*u); ln(ctx,fcx,cy+0.55*u,fcx+0.35*u,cy-0.1*u);
-    ln(ctx,fcx,cy+1.4*u,fcx-0.3*u,cy+2.1*u); ln(ctx,fcx,cy+1.4*u,fcx+0.3*u,cy+2.1*u);
-  } else {
-    const gy=cy+1.9*u; ctx.strokeStyle="#888"; ctx.lineWidth=Math.max(2,u*0.12);
-    ln(ctx,cx-3.2*u,gy,cx+3.2*u,gy);
-    ctx.fillStyle="#10D68A"; poly(ctx,[[cx+0.8*u,gy],[cx+1.4*u,gy-0.5*u],[cx+2.2*u,gy-0.3*u],[cx+3.0*u,gy]]);
-    const s=Math.sin(frame*0.08)*u*0.05,fx=cx-1.3*u+s;
-    ctx.fillStyle="#fff"; ctx.strokeStyle="#fff"; ctx.lineWidth=Math.max(2,u*0.18);
-    circ(ctx,fx,gy-2.4*u,u*0.4);
-    ln(ctx,fx,gy-2.0*u,fx,gy-0.9*u);
-    ln(ctx,fx,gy-1.7*u,fx-0.5*u,gy-1.1*u); ln(ctx,fx,gy-1.7*u,fx+0.5*u,gy-1.1*u);
-    ln(ctx,fx,gy-0.9*u,fx-0.45*u,gy); ln(ctx,fx,gy-0.9*u,fx+0.45*u,gy);
-  }
+  if(ph=="KLIM") sceneClimb(ctx,cx,cy,u,frame);
+  else if(ph=="EXIT") sceneExit(ctx,cx,cy,u,frame);
+  else if(ph=="VRIJE VAL") sceneFreefall(ctx,cx,cy,u,h,frame);
+  else if(ph=="CANOPY") sceneCanopy(ctx,cx,cy,u,frame);
+  else sceneLanded(ctx,cx,cy,u,frame);
+
   // stat hints
   ctx.fillStyle="#fff"; ctx.font="10px Inter,sans-serif";
   const da={KLIM:"3500 m",EXIT:"4000 m","VRIJE VAL":"2200 m",CANOPY:"700 m",GELAND:"0 m"};
   ctx.fillText(da[ph],w*0.30,h*0.76); ctx.fillText("150 bpm",w*0.70,h*0.76);
 }
 
+// reusable: draw a jump plane (Twin Otter-ish) centred at px,py tilted by angle a
+function plane(ctx,px,py,u,a,frame,scale){
+  const s=scale, ca=Math.cos(a), sa=Math.sin(a);
+  const P=(lx,ly)=>R(px,py,lx*u*s,ly*u*s,ca,sa);
+  // fuselage
+  ctx.fillStyle="#c4ccdb";
+  poly(ctx,[P(-3.0,0.25),P(-2.6,-0.5),P(2.2,-0.62),P(3.1,-0.18),P(3.25,0.1),P(2.4,0.6),P(-2.6,0.62)]);
+  // cockpit window
+  ctx.fillStyle="#0a1426";
+  poly(ctx,[P(2.3,-0.45),P(3.0,-0.12),P(2.95,0.12),P(2.35,0.05)]);
+  // cabin windows
+  ctx.fillStyle="#7fa8e6";
+  for(let i=0;i<5;i++){const wx=1.4-i*0.8; const q=P(wx,-0.15); ctx.beginPath();ctx.arc(q[0],q[1],u*s*0.14,0,7);ctx.fill();}
+  // tail fin
+  ctx.fillStyle="#c4ccdb";
+  poly(ctx,[P(-3.0,-0.4),P(-2.5,-1.7),P(-2.05,-1.7),P(-2.2,-0.45)]);
+  // horizontal stabiliser
+  poly(ctx,[P(-3.1,0.0),P(-2.2,-0.15),P(-2.2,0.15),P(-3.1,0.2)]);
+  // high wing on top
+  ctx.fillStyle="#aeb8c9";
+  poly(ctx,[P(-0.9,-0.62),P(2.2,-0.78),P(2.3,-0.56),P(-0.8,-0.42)]);
+  // wing strut
+  ctx.strokeStyle="#aeb8c9"; ctx.lineWidth=Math.max(1.5,u*s*0.09);
+  let s1=P(-0.2,-0.5), s2=P(0.4,0.2); ln(ctx,s1[0],s1[1],s2[0],s2[1]);
+  // fixed landing gear
+  ctx.lineWidth=Math.max(1.5,u*s*0.1);
+  let g1=P(0.3,0.6),g2=P(0.3,1.15); ln(ctx,g1[0],g1[1],g2[0],g2[1]);
+  let g3=P(-0.6,0.6),g4=P(-0.6,1.15); ln(ctx,g3[0],g3[1],g4[0],g4[1]);
+  let wheelA=P(0.3,1.2),wheelB=P(-0.6,1.2);
+  ctx.fillStyle="#2b3346"; circ(ctx,wheelA[0],wheelA[1],u*s*0.18); circ(ctx,wheelB[0],wheelB[1],u*s*0.18);
+  // spinning propeller at nose
+  ctx.strokeStyle="#dfe6f2"; ctx.lineWidth=Math.max(1.5,u*s*0.12);
+  const hub=P(3.25,-0.04); const pa=frame*0.9;
+  for(let b=0;b<3;b++){const ang=pa+b*2.094; const bl=R(hub[0],hub[1],Math.cos(ang)*u*s*1.2,Math.sin(ang)*u*s*1.2,1,0);
+    ln(ctx,hub[0],hub[1],bl[0],bl[1]);}
+  ctx.fillStyle="#dfe6f2"; circ(ctx,hub[0],hub[1],u*s*0.12);
+  return P; // local mapper (for door/jumper)
+}
+
+function cloud(ctx,x,y,u){
+  ctx.fillStyle="rgba(120,140,175,0.22)";
+  circ(ctx,x,y,u*0.9); circ(ctx,x+u*0.9,y+u*0.1,u*0.7); circ(ctx,x-u*0.8,y+u*0.15,u*0.6); circ(ctx,x+u*0.2,y-u*0.4,u*0.6);
+}
+
+function sceneClimb(ctx,cx,cy,u,frame){
+  const bob=Math.sin(frame*0.06)*u*0.18, drift=Math.sin(frame*0.03)*u*0.6;
+  // drifting clouds (parallax)
+  const span=cx*2+u*4;
+  cloud(ctx, ((frame*0.7)% span) - u*2, cy+u*2.4, u);
+  cloud(ctx, ((frame*0.4 + span*0.55)% span) - u*2, cy+u*3.4, u*0.8);
+  // climb trail dots behind the plane
+  const px=cx+drift, py=cy+bob, a=-0.30;
+  const ca=Math.cos(a),sa=Math.sin(a);
+  ctx.fillStyle="rgba(79,141,255,0.55)";
+  for(let i=1;i<=6;i++){const q=R(px,py,(-3.2-i*0.7)*u,(0.1)*u,ca,sa); circ(ctx,q[0],q[1],u*0.09);}
+  // the plane, nose-up
+  const P=plane(ctx,px,py,u,a,frame,1.0);
+  // open jump door + jumper silhouette inside (blue)
+  ctx.fillStyle="#0a1426"; poly(ctx,[P(-1.7,-0.3),P(-0.9,-0.35),P(-0.9,0.45),P(-1.7,0.5)]);
+  ctx.fillStyle="#4F8DFF"; const j=P(-1.3,0.05); circ(ctx,j[0],j[1],u*0.2);
+}
+
+function sceneExit(ctx,cx,cy,u,frame){
+  // plane receding up-left (smaller), banking away
+  const a=-0.18;
+  const px=cx-3.4*u + Math.sin(frame*0.04)*u*0.2, py=cy-3.0*u;
+  const P=plane(ctx,px,py,u,a,frame,0.62);
+  // open door
+  ctx.fillStyle="#0a1426"; poly(ctx,[P(-1.7,-0.3),P(-0.9,-0.35),P(-0.9,0.5),P(-1.7,0.55)]);
+
+  // curved separation path from the door down toward the jumper
+  ctx.strokeStyle="rgba(246,162,59,0.5)"; ctx.lineWidth=Math.max(1.5,u*0.1); ctx.setLineDash([u*0.3,u*0.4]);
+  ctx.beginPath();
+  ctx.moveTo(px+0.6*u, py+1.0*u);
+  ctx.quadraticCurveTo(cx-1.0*u, cy-0.4*u, cx+0.4*u, cy+0.6*u);
+  ctx.stroke(); ctx.setLineDash([]);
+
+  // relative-wind lines hitting the diving jumper from below-front
+  ctx.strokeStyle="rgba(120,150,200,0.5)"; ctx.lineWidth=Math.max(1.5,u*0.1);
+  for(let i=0;i<4;i++){const yy=cy+1.7*u+i*0.5*u; const off=(frame*0.6)%(u*1.0);
+    ln(ctx, cx+1.8*u-off, yy, cx+0.9*u-off, yy-0.4*u);}
+
+  // jumper just exited: arched, head-low dive presentation, tumbling (rotates)
+  const rot=-0.9 + Math.sin(frame*0.18)*0.5; // rolling as they tip into the arch
+  const ca=Math.cos(rot),sa=Math.sin(rot);
+  const fx=cx+0.4*u, fy=cy+0.5*u;
+  const J=(lx,ly)=>R(fx,fy,lx*u,ly*u,ca,sa);
+  ctx.strokeStyle="#fff"; ctx.fillStyle="#fff"; ctx.lineWidth=Math.max(2,u*0.2);
+  // helmet
+  let head=J(0,-1.35); circ(ctx,head[0],head[1],u*0.42);
+  // torso (arched: slight curve)
+  let n=J(0,-0.95), hip=J(0.1,0.5);
+  ctx.beginPath(); ctx.moveTo(n[0],n[1]); ctx.quadraticCurveTo(J(-0.25,-0.2)[0],J(-0.25,-0.2)[1],hip[0],hip[1]); ctx.stroke();
+  // arms reaching forward (toward relative wind)
+  let sh=J(0,-0.75);
+  let e1=J(-1.0,-1.0), w1=J(-1.7,-1.4); plineW(ctx,[sh,e1,w1]);
+  let e2=J(0.9,-1.15), w2=J(1.6,-1.55); plineW(ctx,[sh,e2,w2]);
+  // legs bent (box) trailing
+  let k1=J(-0.2,1.4), f1=J(-1.1,1.3); plineW(ctx,[hip,k1,f1]);
+  let k2=J(0.6,1.45), f2=J(1.4,1.7); plineW(ctx,[hip,k2,f2]);
+}
+
+function sceneFreefall(ctx,cx,cy,u,h,frame){
+  // strong upward wind streaks
+  const span=Math.round(h*0.6);
+  ctx.lineCap="round";
+  for(let i=0;i<9;i++){
+    const sx=cx+((i-4)*0.95)*u + (i%2?u*0.3:0);
+    const off=((frame*11+i*53)%span);
+    const sy=cy+2.4*u-off;
+    const fade=0.18+0.32*(1-off/span);
+    ctx.strokeStyle="rgba(120,150,200,"+fade.toFixed(2)+")"; ctx.lineWidth=Math.max(1.5,u*0.11);
+    ln(ctx,sx,sy,sx,sy-1.0*u);
+  }
+  // arched belly-to-earth (box / "mantis"), seen from behind & above
+  const fl=Math.sin(frame*0.4)*u*0.12, bob=Math.sin(frame*0.25)*u*0.1, yaw=Math.sin(frame*0.12)*0.08;
+  const ca=Math.cos(yaw),sa=Math.sin(yaw);
+  const fx=cx, fy=cy+bob;
+  const J=(lx,ly)=>R(fx,fy,lx*u,ly*u,ca,sa);
+  ctx.strokeStyle="#fff"; ctx.fillStyle="#fff"; ctx.lineWidth=Math.max(2,u*0.22);
+  // helmet (top, head pointing up-screen)
+  let head=J(0,-1.5); circ(ctx,head[0],head[1],u*0.5);
+  // small goggles accent
+  ctx.fillStyle="#0b1020"; let gg=J(0,-1.62); circ(ctx,gg[0],gg[1],u*0.22); ctx.fillStyle="#fff";
+  // torso (jumpsuit) as a tapered body
+  poly(ctx,[J(-0.5,-0.95),J(0.5,-0.95),J(0.42,0.55),J(-0.42,0.55)]);
+  // arms: upper out to sides, forearms forward & bent (90°)
+  let shL=J(-0.5,-0.8), shR=J(0.5,-0.8);
+  plineW(ctx,[shL, J(-1.5,-1.0+fl), J(-1.7,-1.9+fl)]);
+  plineW(ctx,[shR, J(1.5,-1.0-fl), J(1.7,-1.9-fl)]);
+  // legs: thighs out, shins bent
+  let hipL=J(-0.42,0.55), hipR=J(0.42,0.55);
+  plineW(ctx,[hipL, J(-1.15,1.5-fl), J(-0.7,2.4-fl)]);
+  plineW(ctx,[hipR, J(1.15,1.5+fl), J(0.7,2.4+fl)]);
+}
+
+function sceneCanopy(ctx,cx,cy,u,frame){
+  const sway=Math.sin(frame*0.07)*0.16; // radians, whole system swings
+  const ca=Math.cos(sway),sa=Math.sin(sway);
+  const ax=cx, ay=cy+1.3*u; // pivot near jumper
+  const W=(lx,ly)=>R(ax,ay,lx*u,ly*u,ca,sa);
+
+  // ram-air rectangular wing (square), slightly arced, with cells
+  const halfW=2.7, depth=0.62, arc=0.95, wy=-3.2;
+  const top=[], bot=[];
+  const N=8;
+  for(let i=0;i<=N;i++){const t=(i/N)*2-1; const x=t*halfW; const sagY=arc*(1-t*t);
+    top.push(W(x, wy - sagY - depth)); bot.push(W(x, wy - sagY));}
+  // fill canopy
+  ctx.fillStyle="#10D68A";
+  const wing=top.concat(bot.slice().reverse());
+  poly(ctx,wing);
+  // leading edge (front, darker) + cell dividers
+  ctx.strokeStyle="rgba(6,40,28,0.55)"; ctx.lineWidth=Math.max(1,u*0.07);
+  for(let i=0;i<=N;i++){ln(ctx,top[i][0],top[i][1],bot[i][0],bot[i][1]);}
+  // suspension lines cascading from bottom edge to two riser points at the jumper
+  ctx.strokeStyle="rgba(210,220,235,0.7)"; ctx.lineWidth=1;
+  const riserL=W(-0.4,-0.2), riserR=W(0.4,-0.2);
+  for(let i=0;i<=N;i++){const target=(i<=N/2)?riserL:riserR; ln(ctx,bot[i][0],bot[i][1],target[0],target[1]);}
+
+  // jumper in harness, hands up to toggles, legs relaxed
+  ctx.strokeStyle="#fff"; ctx.fillStyle="#fff"; ctx.lineWidth=Math.max(2,u*0.2);
+  const head=W(0,0.35); circ(ctx,head[0],head[1],u*0.4);
+  let neck=W(0,0.7), hip=W(0,1.75);
+  plineW(ctx,[neck,hip]);
+  // arms up to risers
+  plineW(ctx,[W(0,0.85), riserL]); plineW(ctx,[W(0,0.85), riserR]);
+  // legs relaxed, slightly forward
+  plineW(ctx,[hip, W(-0.3,2.6), W(-0.25,3.2)]);
+  plineW(ctx,[hip, W(0.3,2.6), W(0.35,3.2)]);
+}
+
+function sceneLanded(ctx,cx,cy,u,frame){
+  const gy=cy+2.2*u;
+  // ground
+  ctx.strokeStyle="#5b6b50"; ctx.lineWidth=Math.max(2,u*0.14);
+  ln(ctx,cx-3.4*u,gy,cx+3.4*u,gy);
+  // grass tufts
+  ctx.strokeStyle="#46603a"; ctx.lineWidth=Math.max(1.5,u*0.08);
+  for(let i=-3;i<=3;i++){const gx=cx+i*1.0*u; ln(ctx,gx,gy,gx-u*0.12,gy-u*0.4); ln(ctx,gx,gy,gx+u*0.12,gy-u*0.4);}
+  // deflated ram-air canopy puddled behind (right), crumpled wavy fabric
+  ctx.fillStyle="#10D68A";
+  poly(ctx,[[cx+0.7*u,gy],[cx+1.3*u,gy-0.55*u],[cx+1.9*u,gy-0.2*u],[cx+2.4*u,gy-0.6*u],[cx+3.1*u,gy-0.15*u],[cx+3.3*u,gy]]);
+  // a few slack lines from canopy to jumper
+  ctx.strokeStyle="rgba(210,220,235,0.55)"; ctx.lineWidth=1;
+  ln(ctx,cx+1.3*u,gy-0.4*u,cx-0.7*u,gy-1.0*u); ln(ctx,cx+2.0*u,gy-0.3*u,cx-0.6*u,gy-1.0*u);
+  // standing jumper (left), slight idle sway
+  const s=Math.sin(frame*0.06)*u*0.05, fx=cx-1.4*u+s;
+  ctx.strokeStyle="#fff"; ctx.fillStyle="#fff"; ctx.lineWidth=Math.max(2,u*0.2);
+  circ(ctx,fx,gy-2.5*u,u*0.42);
+  ln(ctx,fx,gy-2.1*u,fx,gy-1.0*u);          // torso
+  plineW(ctx,[[fx,gy-1.85*u],[fx-0.55*u,gy-1.5*u],[fx-0.7*u,gy-0.95*u]]); // arm
+  plineW(ctx,[[fx,gy-1.85*u],[fx+0.55*u,gy-1.5*u],[fx+0.7*u,gy-0.95*u]]);
+  ln(ctx,fx,gy-1.0*u,fx-0.45*u,gy);          // legs
+  ln(ctx,fx,gy-1.0*u,fx+0.45*u,gy);
+}
+
 let frame = 0;
-// advance at ~15 fps to match the watch's animation cadence
 setInterval(() => { frame++; for (const [ctx, p] of ctxs) draw(ctx, p, frame); }, 67);
 </script>
 </body>
