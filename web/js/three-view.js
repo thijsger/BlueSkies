@@ -27,8 +27,9 @@ export function mount3D(container, scrubInput, playBtn, jump) {
     minLat = Math.min(minLat, s.lat); maxLat = Math.max(maxLat, s.lat);
     minLng = Math.min(minLng, s.lng); maxLng = Math.max(maxLng, s.lng);
   }
-  const padLat = Math.max((maxLat - minLat) * 0.25, 0.0015);
-  const padLng = Math.max((maxLng - minLng) * 0.25, 0.0015);
+  // generous padding -> a much larger satellite map / world around the track
+  const padLat = Math.max((maxLat - minLat) * 0.9, 0.006);
+  const padLng = Math.max((maxLng - minLng) * 0.9, 0.006);
   minLat -= padLat; maxLat += padLat; minLng -= padLng; maxLng += padLng;
 
   const widthM = (maxLng - minLng) * mPerDegLng;   // east-west
@@ -52,13 +53,17 @@ export function mount3D(container, scrubInput, playBtn, jump) {
   const scene = new THREE.Scene();
   const sky = skyTexture();
   scene.background = sky;
-  scene.fog = new THREE.Fog(0xcfe0f5, horizSpan * 2.2, horizSpan * 9);
+  scene.fog = new THREE.Fog(0xcfe0f5, horizSpan * 4, horizSpan * 22);
 
   const width = container.clientWidth || 800;
   const height = 480;
-  const camera = new THREE.PerspectiveCamera(52, width / height, 1, 400000);
+  const camera = new THREE.PerspectiveCamera(
+    52, width / height,
+    Math.max(2, horizSpan * 0.02),   // near: avoid z-fighting at distance
+    horizSpan * 60                   // far
+  );
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(width, height);
   renderer.domElement.id = "three-canvas";
@@ -74,7 +79,16 @@ export function mount3D(container, scrubInput, playBtn, jump) {
   dir.position.set(1, 2, 1.4);
   scene.add(dir);
 
-  // --- ground: satellite map texture ---
+  // large surrounding terrain so the world extends to the horizon (into the fog)
+  const far = new THREE.Mesh(
+    new THREE.PlaneGeometry(horizSpan * 26, horizSpan * 26, 1, 1),
+    new THREE.MeshBasicMaterial({ color: 0x6f8a5e })
+  );
+  far.rotation.x = -Math.PI / 2;
+  far.position.set(groundCx, -1.5, groundCz);
+  scene.add(far);
+
+  // --- ground: satellite map texture (sits just above the far terrain) ---
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(widthM, depthM, 1, 1),
     new THREE.MeshBasicMaterial({ color: 0x355c3a }) // fallback colour until tiles load
@@ -82,14 +96,6 @@ export function mount3D(container, scrubInput, playBtn, jump) {
   ground.rotation.x = -Math.PI / 2;
   ground.position.set(groundCx, 0, groundCz);
   scene.add(ground);
-
-  // a thin "base" box so the world has visible thickness from the side
-  const base = new THREE.Mesh(
-    new THREE.BoxGeometry(widthM, Math.max(horizSpan * 0.04, 8), depthM),
-    new THREE.MeshStandardMaterial({ color: 0x6b5a44, roughness: 1 })
-  );
-  base.position.set(groundCx, -Math.max(horizSpan * 0.02, 4), groundCz);
-  scene.add(base);
 
   // load Esri World Imagery as a single export image for the bbox (no API key)
   const mapW = 1024, ar = widthM / depthM;
@@ -126,12 +132,10 @@ export function mount3D(container, scrubInput, playBtn, jump) {
     scene.add(new THREE.Mesh(geo, mat));
   }
 
-  // bounds for framing
-  const allBox = new THREE.Box3().setFromPoints(pts.concat([
-    new THREE.Vector3(groundCx - widthM / 2, 0, groundCz - depthM / 2),
-    new THREE.Vector3(groundCx + widthM / 2, 0, groundCz + depthM / 2),
-  ]));
-  const center = allBox.getCenter(new THREE.Vector3());
+  // framing: focus on the track itself (the big ground extends around it)
+  const trackBox = new THREE.Box3().setFromPoints(pts);
+  const center = trackBox.getCenter(new THREE.Vector3());
+  const trackSpan = Math.max(trackBox.getSize(new THREE.Vector3()).length(), horizSpan * 0.4);
 
   // --- ground pins (pole + sphere + label) ---
   const pinSize = Math.max(horizSpan * 0.02, 8);
@@ -162,9 +166,9 @@ export function mount3D(container, scrubInput, playBtn, jump) {
   pos.position.copy(pts[pts.length - 1]);
   scene.add(pos);
 
-  // camera framing
-  camera.position.set(center.x + horizSpan * 1.1, allBox.max.y + horizSpan * 0.7, center.z + horizSpan * 1.4);
-  controls.target.copy(center);
+  // camera framing — lower, cinematic angle so the horizon + sky stay visible
+  camera.position.set(center.x + trackSpan * 1.15, trackBox.max.y * 0.55 + trackSpan * 0.22, center.z + trackSpan * 1.5);
+  controls.target.set(center.x, center.y * 0.5, center.z);
   controls.update();
 
   // --- scrub / play ---
