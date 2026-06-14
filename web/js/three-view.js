@@ -27,15 +27,19 @@ export function mount3D(container, scrubInput, playBtn, jump) {
     minLat = Math.min(minLat, s.lat); maxLat = Math.max(maxLat, s.lat);
     minLng = Math.min(minLng, s.lng); maxLng = Math.max(maxLng, s.lng);
   }
-  // generous padding -> a much larger satellite map / world around the track
-  const padLat = Math.max((maxLat - minLat) * 0.9, 0.006);
-  const padLng = Math.max((maxLng - minLng) * 0.9, 0.006);
-  minLat -= padLat; maxLat += padLat; minLng -= padLng; maxLng += padLng;
+  // Build a SQUARE world in metres around the track centre (no stretching) and
+  // cover a much larger area -> lots of real surrounding map, not empty terrain.
+  const cLat = (minLat + maxLat) / 2, cLng = (minLng + maxLng) / 2;
+  const trackHalfM = Math.max((maxLng - minLng) * mPerDegLng, (maxLat - minLat) * mPerDegLat) / 2;
+  const worldHalfM = Math.max(trackHalfM * 3.5, 2500); // ~5 km+ across = much more map
+  const halfLat = worldHalfM / mPerDegLat, halfLng = worldHalfM / mPerDegLng;
+  minLat = cLat - halfLat; maxLat = cLat + halfLat;
+  minLng = cLng - halfLng; maxLng = cLng + halfLng;
 
-  const widthM = (maxLng - minLng) * mPerDegLng;   // east-west
-  const depthM = (maxLat - minLat) * mPerDegLat;   // north-south
-  const groundCx = ((minLng + maxLng) / 2 - lng0) * mPerDegLng;
-  const groundCz = -((minLat + maxLat) / 2 - lat0) * mPerDegLat;
+  const widthM = worldHalfM * 2;   // east-west (square)
+  const depthM = worldHalfM * 2;   // north-south
+  const groundCx = (cLng - lng0) * mPerDegLng;
+  const groundCz = -(cLat - lat0) * mPerDegLat;
 
   const toLocal = (s, hScale) => new THREE.Vector3(
     (s.lng - lng0) * mPerDegLng,
@@ -97,19 +101,26 @@ export function mount3D(container, scrubInput, playBtn, jump) {
   ground.position.set(groundCx, 0, groundCz);
   scene.add(ground);
 
-  // load Esri World Imagery as a single export image for the bbox (no API key)
-  const mapW = 1024, ar = widthM / depthM;
-  const px = ar >= 1 ? mapW : Math.round(mapW * ar);
-  const pz = ar >= 1 ? Math.round(mapW / ar) : mapW;
-  const url = "https://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/export" +
-    `?bbox=${minLng},${minLat},${maxLng},${maxLat}&bboxSR=4326&imageSR=4326` +
-    `&size=${px},${pz}&format=jpg&transparent=false&f=image`;
+  // load Esri World Imagery for the bbox (no API key). Progressive: a fast 1024
+  // texture appears almost instantly, then a crisp 2048 swaps in when ready.
+  const ar = widthM / depthM;
   const loader = new THREE.TextureLoader();
   loader.setCrossOrigin("anonymous");
-  loader.load(url, (tex) => {
+  const esriUrl = (sz) => {
+    const px = ar >= 1 ? sz : Math.round(sz * ar);
+    const pz = ar >= 1 ? Math.round(sz / ar) : sz;
+    return "https://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/export" +
+      `?bbox=${minLng},${minLat},${maxLng},${maxLat}&bboxSR=4326&imageSR=4326` +
+      `&size=${px},${pz}&format=jpg&transparent=false&f=image`;
+  };
+  const setGround = (tex) => {
     tex.colorSpace = THREE.SRGBColorSpace;
-    ground.material = new THREE.MeshBasicMaterial({ map: tex });
-  });
+    if (ground.material.map) ground.material.map.dispose();
+    ground.material.map = tex;
+    ground.material.color.set(0xffffff);
+    ground.material.needsUpdate = true;
+  };
+  loader.load(esriUrl(1024), (low) => { setGround(low); loader.load(esriUrl(2048), setGround); });
 
   // --- track as a phase-coloured 3D tube ---
   const radius = Math.max(horizSpan * 0.006, 2.5);
