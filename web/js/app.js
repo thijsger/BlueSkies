@@ -11,17 +11,20 @@ import {
   byTypeChart, byDropzoneChart, hasValues,
 } from "./charts.js";
 import { mount3D } from "./three-view.js";
+import { mountMap } from "./map-view.js";
 
 const view = document.getElementById("view");
 
 let liveCharts = [];
 let cleanup3D = null;
+let cleanupMap = null;
 let pollTimer = null;
 
 function teardown() {
   liveCharts.forEach((c) => c.destroy());
   liveCharts = [];
   if (cleanup3D) { cleanup3D(); cleanup3D = null; }
+  if (cleanupMap) { cleanupMap(); cleanupMap = null; }
   stopPoll();
 }
 function startPoll(fn, ms = 5000) { stopPoll(); pollTimer = setInterval(fn, ms); }
@@ -166,6 +169,9 @@ async function jumpDetailView(id) {
     },
   }));
 
+  // map (ground track on satellite imagery)
+  view.append(mapPanel(jump));
+
   // 3D track
   view.append(track3DPanel(jump));
 
@@ -178,6 +184,24 @@ async function jumpDetailView(id) {
     ChartCard({ name: "wind", color: "canopy", title: "Grondsnelheid — canopy", charts: liveCharts, hasData: series.some((s2) => s2.phase === "canopy" && s2.groundSpeed != null), emptyText: "Geen GPS-grondsnelheid in de canopy-fase.", build: (cv) => groundSpeedChart(cv, jump) }),
   ]));
   view.append(ChartCard({ name: "activity", color: "altitude", title: "Hoogte + daalsnelheid", charts: liveCharts, hasData: hasValues(series, "alt"), build: (cv) => combinedChart(cv, jump) }));
+}
+
+function mapPanel(jump) {
+  const hasGps = (jump.series || []).some((s) => s.lat != null && s.lng != null);
+  const head = el("div", { class: "panel-head" }, [
+    el("span", { class: "panel-ico", "data-color": "canopy" }, [icon("mapPin", 17)]),
+    el("h3", {}, "Kaart — grondtrack"),
+  ]);
+  if (!hasGps) {
+    return el("div", { class: "panel" }, [head, EmptyState({
+      name: "satellite", title: "Geen GPS-track beschikbaar",
+      text: "Deze opname bevat geen GPS-posities, dus er is geen kaart te tonen.",
+    })]);
+  }
+  const container = el("div", { class: "map-wrap" });
+  const panel = el("div", { class: "panel" }, [head, container]);
+  requestAnimationFrame(() => { cleanupMap = mountMap(container, jump); });
+  return panel;
 }
 
 function track3DPanel(jump) {

@@ -225,6 +225,18 @@ main { max-width: var(--maxw); margin: 0 auto; padding: 1.8rem 1.4rem 3rem; anim
 .chart-card .chart-body { min-height: 250px; }
 .chart-wrap { position: relative; height: 250px; }
 
+/* ---------------- map ---------------- */
+.map-wrap { height: 440px; border-radius: 16px; overflow: hidden; border: 1px solid var(--border); }
+.leaflet-container { background: #dde6f3; font-family: inherit; }
+.map-pin { transform: translate(-50%, -100%); text-align: center; pointer-events: none; }
+.map-pin i { display: block; width: 14px; height: 14px; border-radius: 50%; margin: 0 auto; border: 2px solid #fff; box-shadow: 0 1px 5px rgba(0,0,0,0.5); }
+.map-pin b { display: inline-block; margin-top: 2px; background: rgba(15,23,42,0.82); color: #fff; font-size: 0.6rem; font-weight: 800; letter-spacing: 0.05em; padding: 1px 6px; border-radius: 5px; }
+.map-legend { background: rgba(255,255,255,0.92); border: 1px solid var(--border); border-radius: 10px; padding: 0.4rem 0.6rem; display: flex; flex-direction: column; gap: 0.2rem; box-shadow: var(--shadow-sm); }
+.map-legend span { display: flex; align-items: center; gap: 0.4rem; font-size: 0.72rem; font-weight: 600; color: var(--text); }
+.map-legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.leaflet-bar a, .leaflet-control-layers { border-radius: 10px !important; border-color: var(--border) !important; color: var(--text); }
+.leaflet-control-layers { box-shadow: var(--shadow-sm) !important; }
+
 /* ---------------- 3D track ---------------- */
 .track-chips { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.9rem; }
 .three-container { border-radius: 16px; overflow: hidden; border: 1px solid var(--border); }
