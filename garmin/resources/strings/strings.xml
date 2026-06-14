@@ -1,0 +1,12 @@
+<strings>
+    <string id="AppName">Skydive Log</string>
+    <string id="Disclaimer">Geen veiligheidsinstrument. Vrije-val-hoogte is een schatting. Gebruik altijd een goedgekeurde hoogtemeter en AAD. Tik om te accepteren.</string>
+    <string id="Start">Start</string>
+    <string id="Stop">Stop</string>
+    <string id="Climb">KLIM</string>
+    <string id="Exit">EXIT</string>
+    <string id="Freefall">VRIJE VAL</string>
+    <string id="Canopy">CANOPY</string>
+    <string id="Landed">GELAND</string>
+    <string id="Ready">Klaar</string>
+</strings>

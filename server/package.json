@@ -1,0 +1,21 @@
+{
+  "name": "skydive-tracker-server",
+  "version": "1.0.0",
+  "description": "Backend for the skydive tracking system (live watch ingest + .FIT upload).",
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "fit-file-parser": "^1.21.0",
+    "multer": "^2.1.1"
+  }
+}

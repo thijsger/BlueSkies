@@ -1,0 +1,4 @@
+<properties>
+    <!-- Set this to your deployed Render backend, e.g. https://skydive-tracker.onrender.com -->
+    <property id="backendUrl" type="string">https://skydive-tracker.onrender.com</property>
+</properties>

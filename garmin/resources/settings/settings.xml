@@ -1,0 +1,5 @@
+<settings>
+    <setting propertyKey="@Properties.backendUrl" title="Backend URL">
+        <settingConfig type="alphaNumeric" maxLength="120" />
+    </setting>
+</settings>

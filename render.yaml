@@ -1,0 +1,29 @@
+# Render blueprint. Deploy via GitHub: push this repo, then in the Render
+# dashboard choose "New +" -> "Blueprint" and point it at the repo.
+#
+# This runs ONE web service that serves both the API and the static dashboard.
+# A persistent disk holds the SQLite database so data survives restarts/redeploys.
+#
+# NOTE: persistent disks require a paid instance type (starter or higher).
+# If you must stay on the free tier, see README "Storage alternatives" for the
+# Render Postgres option.
+services:
+  - type: web
+    name: skydive-tracker
+    runtime: node
+    plan: starter            # needed for the persistent disk below
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: DATA_DIR
+        value: /var/data
+      - key: CORS_ORIGIN
+        value: "*"
+    disk:
+      name: skydive-data
+      mountPath: /var/data
+      sizeGB: 1

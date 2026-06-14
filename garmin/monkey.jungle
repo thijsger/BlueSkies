@@ -1,0 +1,7 @@
+# Connect IQ build configuration.
+project.manifest = manifest.xml
+
+# Default source + resources are picked up automatically from source/ and
+# resources/. Listed explicitly here for clarity.
+base.sourcePath = source
+base.resourcePath = resources

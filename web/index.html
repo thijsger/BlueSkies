@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skydive Logboek</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪂</text></svg>" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div class="bg-aurora"></div>
+
+  <header class="topbar">
+    <div class="brand" data-route="#/logbook">
+      <span class="brand-logo">🪂</span>
+      <span class="brand-text">Skydive<span class="brand-accent">Log</span></span>
+    </div>
+    <nav>
+      <a href="#/logbook" data-nav="logbook"><span class="nav-ico">📒</span>Logboek</a>
+      <a href="#/stats" data-nav="stats"><span class="nav-ico">📈</span>Statistieken</a>
+      <a href="#/upload" data-nav="upload"><span class="nav-ico">⬆️</span>Upload</a>
+    </nav>
+    <div class="live-pill" id="live-pill" title="Automatisch verversen — nieuwe sprongen verschijnen vanzelf">
+      <span class="live-dot"></span> Live
+    </div>
+  </header>
+
+  <main id="view"></main>
+
+  <footer class="site-footer">
+    <span>🪂 Skydive Logboek</span>
+    <span class="dim">Persoonlijke tracker · vrije-val-waarden zijn schattingen</span>
+  </footer>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
