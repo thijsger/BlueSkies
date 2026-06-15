@@ -29,8 +29,16 @@ app.use("/api", authRouter);   // public auth endpoints
 app.use("/api", jumpsRouter);  // jump/stats endpoints (require auth)
 
 // Serve the web dashboard (static) from the same service.
+// No-store on HTML/JS/CSS so the SPA always loads the latest code after a deploy
+// (avoids stale cached modules); tiles/assets can still be cached by their CDN.
 const webDir = process.env.WEB_DIR || path.join(__dirname, "..", "..", "web");
-app.use(express.static(webDir));
+app.use(express.static(webDir, {
+  setHeaders(res, filePath) {
+    if (/\.(html|js|css)$/.test(filePath)) {
+      res.setHeader("Cache-Control", "no-cache, must-revalidate");
+    }
+  },
+}));
 // SPA-ish fallback for non-API routes -> index.html
 app.get(/^\/(?!api).*/, (_req, res) => {
   res.sendFile(path.join(webDir, "index.html"));
