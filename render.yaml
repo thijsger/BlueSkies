@@ -25,9 +25,8 @@ services:
         value: /var/data
       - key: CORS_ORIGIN
         value: "*"
-      # Optional — set in the Render dashboard to enable Google Sign-In:
-      # - key: GOOGLE_CLIENT_ID
-      #   value: xxxxx.apps.googleusercontent.com
+      - key: GOOGLE_CLIENT_ID
+        value: 1003111852602-ico22e47rnqiihvb5de4jbe6q6r87od7.apps.googleusercontent.com
     disk:
       name: blueskies-data
       mountPath: /var/data
