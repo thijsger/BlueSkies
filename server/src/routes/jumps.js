@@ -10,10 +10,14 @@ import {
   deleteJump,
 } from "../db.js";
 import { normalizeLive, normalizeFit } from "../model.js";
+import { requireAuth } from "../auth.js";
 
 const FitParser = FitParserPkg.default || FitParserPkg;
 
 const router = express.Router();
+
+// every jump/stats route needs a logged-in user (session) or device API key
+router.use(requireAuth);
 
 // .FIT files are small; 25 MB is generous. Memory storage -> parse buffer.
 const upload = multer({
@@ -42,7 +46,7 @@ function parseFit(buffer) {
 router.post("/jumps", (req, res) => {
   try {
     const jump = normalizeLive(req.body);
-    const saved = insertJump(jump);
+    const saved = insertJump(jump, req.userId);
     res.status(201).json({ id: saved.id, jumpNumber: saved.jumpNumber });
   } catch (err) {
     res.status(400).json({ error: "Invalid live payload", detail: String(err.message || err) });
@@ -61,7 +65,7 @@ router.post("/jumps/upload", upload.single("file"), async (req, res) => {
       notes: req.body.notes,
     };
     const jump = normalizeFit(fit, meta);
-    const saved = insertJump(jump);
+    const saved = insertJump(jump, req.userId);
     res.status(201).json({ id: saved.id, jumpNumber: saved.jumpNumber, summary: saved.summary });
   } catch (err) {
     res.status(400).json({ error: "Could not parse .FIT file", detail: String(err.message || err) });
@@ -69,13 +73,13 @@ router.post("/jumps/upload", upload.single("file"), async (req, res) => {
 });
 
 // GET /api/jumps  — list summaries
-router.get("/jumps", (_req, res) => {
-  res.json(listJumps());
+router.get("/jumps", (req, res) => {
+  res.json(listJumps(req.userId));
 });
 
 // GET /api/jumps/:id  — full jump (series + phases)
 router.get("/jumps/:id", (req, res) => {
-  const jump = getJump(req.params.id);
+  const jump = getJump(req.params.id, req.userId);
   if (!jump) return res.status(404).json({ error: "Jump not found" });
   res.json(jump);
 });
@@ -85,21 +89,21 @@ router.patch("/jumps/:id", (req, res) => {
   const allowed = ["jumpType", "aircraft", "notes", "jumpNumber", "target", "dropzone"];
   const patch = {};
   for (const k of allowed) if (k in req.body) patch[k] = req.body[k];
-  const jump = updateJump(req.params.id, patch);
+  const jump = updateJump(req.params.id, patch, req.userId);
   if (!jump) return res.status(404).json({ error: "Jump not found" });
   res.json(jump);
 });
 
 // DELETE /api/jumps/:id
 router.delete("/jumps/:id", (req, res) => {
-  const ok = deleteJump(req.params.id);
+  const ok = deleteJump(req.params.id, req.userId);
   if (!ok) return res.status(404).json({ error: "Jump not found" });
   res.status(204).end();
 });
 
 // GET /api/stats  — cumulative stats + trends
-router.get("/stats", (_req, res) => {
-  const jumps = listJumps();
+router.get("/stats", (req, res) => {
+  const jumps = listJumps(req.userId);
   const n = jumps.length;
 
   let totalFreefall = 0;
@@ -194,7 +198,7 @@ router.get("/stats", (_req, res) => {
   const zoneEdges = [0, 100, 120, 140, 160, 180, 999];
   const zoneLabels = ["<100", "100–120", "120–140", "140–160", "160–180", "180+"];
   const hrZones = new Array(zoneLabels.length).fill(0); // seconds
-  for (const j of allJumpsFull()) {
+  for (const j of allJumpsFull(req.userId)) {
     const series = j.series || [];
     for (let i = 1; i < series.length; i++) {
       const hr = series[i].hr;

@@ -63,9 +63,14 @@ class Uploader {
 
         mCurKey = key;
         mSending = true;
+        var headers = { "Content-Type" => Communications.REQUEST_CONTENT_TYPE_JSON };
+        var apiKey = Application.Properties.getValue("apiKey");
+        if (apiKey != null && apiKey.length() > 0) {
+            headers["x-api-key"] = apiKey;
+        }
         var options = {
             :method => Communications.HTTP_REQUEST_METHOD_POST,
-            :headers => { "Content-Type" => Communications.REQUEST_CONTENT_TYPE_JSON },
+            :headers => headers,
             :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON
         };
         Communications.makeWebRequest(base + "/api/jumps", payload as Dictionary, options, method(:onSent));

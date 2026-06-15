@@ -2,4 +2,7 @@
     <setting propertyKey="@Properties.backendUrl" title="Backend URL">
         <settingConfig type="alphaNumeric" maxLength="120" />
     </setting>
+    <setting propertyKey="@Properties.apiKey" title="API-key (Profiel in dashboard)">
+        <settingConfig type="alphaNumeric" maxLength="80" />
+    </setting>
 </settings>

@@ -12,6 +12,10 @@ import {
 } from "./charts.js";
 import { mount3D } from "./three-view.js";
 import { mountMap } from "./map-view.js";
+import { auth } from "./auth.js";
+import { renderLogin } from "./login.js";
+
+let currentUser = null;
 
 const view = document.getElementById("view");
 
@@ -31,9 +35,10 @@ function startPoll(fn, ms = 5000) { stopPoll(); pollTimer = setInterval(fn, ms);
 function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
 
 // ---------------------------------------------------------------- router
-const routes = { "": logbookView, "#/logbook": logbookView, "#/stats": statsView, "#/upload": uploadView };
+const routes = { "": logbookView, "#/logbook": logbookView, "#/stats": statsView, "#/upload": uploadView, "#/profile": profileView };
 
 async function router() {
+  if (!currentUser) return; // gated; login screen handles it
   teardown();
   const hash = location.hash;
   setActiveNav(hash);
@@ -42,14 +47,67 @@ async function router() {
     else await (routes[hash] || logbookView)();
     window.scrollTo({ top: 0 });
   } catch (e) {
+    if (e && e.status === 401) return showLogin();
     view.innerHTML = "";
-    view.append(EmptyState({
-      name: "alert", title: "Kon data niet laden", text: e.message,
-    }));
+    view.append(EmptyState({ name: "alert", title: "Kon data niet laden", text: e.message }));
   }
 }
 window.addEventListener("hashchange", router);
-window.addEventListener("DOMContentLoaded", router);
+
+// ---------------------------------------------------------------- auth boot
+async function boot() {
+  try {
+    const { user } = await auth.me();
+    if (user) { currentUser = user; onLoggedIn(); }
+    else showLogin();
+  } catch { showLogin(); }
+}
+
+function showLogin() {
+  currentUser = null;
+  teardown();
+  document.body.classList.add("logged-out");
+  renderLogin(view, (user) => {
+    currentUser = user;
+    document.body.classList.remove("logged-out");
+    onLoggedIn();
+  });
+}
+
+function onLoggedIn() {
+  document.body.classList.remove("logged-out");
+  mountUserMenu();
+  if (!location.hash || location.hash === "#/login") location.hash = "#/logbook";
+  router();
+}
+
+function mountUserMenu() {
+  const bar = document.querySelector(".topbar");
+  let slot = document.getElementById("user-slot");
+  if (slot) slot.remove();
+  slot = el("div", { id: "user-slot", class: "user-slot" });
+  const initial = (currentUser.name || currentUser.email || "?").trim().charAt(0).toUpperCase();
+  const avatar = el("button", { class: "avatar-btn", title: currentUser.email }, initial);
+  const menu = el("div", { class: "user-menu hidden" }, [
+    el("div", { class: "um-head" }, [el("div", { class: "um-name" }, currentUser.name || "—"), el("div", { class: "um-email" }, currentUser.email)]),
+    el("a", { class: "um-item", href: "#/profile", onclick: () => menu.classList.add("hidden") }, [icon("satellite", 15), "Profiel & watch-key"]),
+    el("button", { class: "um-item", onclick: doLogout }, [icon("logOut", 15), "Uitloggen"]),
+  ]);
+  avatar.addEventListener("click", (e) => { e.stopPropagation(); menu.classList.toggle("hidden"); });
+  document.addEventListener("click", () => menu.classList.add("hidden"));
+  slot.append(avatar, menu);
+  bar.append(slot);
+}
+
+async function doLogout() {
+  try { await auth.logout(); } catch {}
+  const slot = document.getElementById("user-slot");
+  if (slot) slot.remove();
+  location.hash = "";
+  showLogin();
+}
+
+window.addEventListener("DOMContentLoaded", boot);
 
 function setActiveNav(hash) {
   document.querySelectorAll("[data-nav]").forEach((a) => {
@@ -99,8 +157,19 @@ function renderLogbook(jumps) {
   const grid = el("div", { class: "logbook-grid" });
   for (const j of jumps) {
     const s = j.summary || {};
+    const delBtn = el("button", { class: "jc-del", title: "Verwijder sprong" }, [icon("trash", 15)]);
+    delBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      if (!confirm(`Sprong #${j.jumpNumber} verwijderen?`)) return;
+      try {
+        await api.deleteJump(j.id);
+        e.currentTarget.closest(".jump-card").remove();
+        toast("Sprong verwijderd", "ok");
+      } catch (err) { toast("Verwijderen mislukt: " + err.message, "err"); }
+    });
     grid.append(el("div", { class: "jump-card", onclick: () => (location.hash = "#/jump/" + j.id) }, [
       el("div", { class: "jc-rail" }),
+      delBtn,
       el("div", { class: "jc-head" }, [
         el("div", { class: "jc-num" }, [el("span", { class: "hash" }, "#"), String(j.jumpNumber ?? "—")]),
         el("div", { class: "jc-src" }, [
@@ -307,6 +376,36 @@ function currencyChip(label, value) {
     el("div", { class: "cc-value" }, value),
     el("div", { class: "cc-label" }, label),
   ]);
+}
+
+// ---------------------------------------------------------------- profile
+async function profileView() {
+  view.innerHTML = "";
+  view.append(el("a", { class: "back", href: "#/logbook" }, [icon("chevronDown", 16, "rot90"), "Terug"]));
+  view.append(pageHead("Profiel", currentUser.email));
+
+  // account
+  view.append(el("div", { class: "panel" }, [
+    el("div", { class: "panel-head" }, [el("span", { class: "panel-ico", "data-color": "track" }, [icon("flag", 17)]), el("h3", {}, "Account")]),
+    el("div", { class: "field" }, [el("span", { class: "field-label" }, "Naam"), el("input", { type: "text", value: currentUser.name || "", disabled: "" })]),
+    el("div", { class: "field" }, [el("span", { class: "field-label" }, "E-mail"), el("input", { type: "text", value: currentUser.email, disabled: "" })]),
+    el("button", { class: "btn ghost sm", onclick: doLogout }, [icon("logOut", 15), "Uitloggen"]),
+  ]));
+
+  // watch API key
+  const keyInput = el("input", { type: "text", value: currentUser.apiKey, readonly: "", class: "mono-input" });
+  const copyBtn = el("button", { class: "btn ghost sm", onclick: () => { keyInput.select(); navigator.clipboard?.writeText(currentUser.apiKey); toast("Gekopieerd", "ok"); } }, [icon("save", 15), "Kopieer"]);
+  const regenBtn = el("button", { class: "btn ghost-danger sm", onclick: async () => {
+    if (!confirm("Nieuwe key genereren? De oude stopt direct met werken (watch opnieuw instellen).")) return;
+    try { const r = await auth.regenerateKey(); currentUser.apiKey = r.apiKey; keyInput.value = r.apiKey; toast("Nieuwe key", "ok"); }
+    catch (e) { toast(e.message, "err"); }
+  } }, [icon("refresh", 15), "Vernieuw"]);
+
+  view.append(el("div", { class: "panel" }, [
+    el("div", { class: "panel-head" }, [el("span", { class: "panel-ico", "data-color": "altitude" }, [icon("satellite", 17)]), el("h3", {}, "Watch-key (API)")]),
+    el("p", { class: "field-hint" }, "Zet deze key in de Garmin-app (BlueSkies → instellingen → API-key) zodat je horloge sprongen naar jouw account stuurt."),
+    el("div", { class: "inline-edit" }, [el("div", { class: "field", style: "flex:1" }, [el("span", { class: "field-label" }, "Jouw API-key"), keyInput]), copyBtn, regenBtn]),
+  ]));
 }
 
 async function uploadView() {

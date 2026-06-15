@@ -1,4 +1,6 @@
 <properties>
     <!-- Set this to your deployed Render backend. -->
     <property id="backendUrl" type="string">https://blueskies-cevr.onrender.com</property>
+    <!-- Personal API key from the dashboard (Profiel → Watch-key) so jumps land in your account. -->
+    <property id="apiKey" type="string"></property>
 </properties>

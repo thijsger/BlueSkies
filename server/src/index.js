@@ -3,17 +3,20 @@ import cors from "cors";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import jumpsRouter from "./routes/jumps.js";
+import authRouter from "./routes/auth.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // CORS: allow the dashboard origin. CORS_ORIGIN can be a comma-separated list,
-// or "*" (default) for the bundled same-origin dashboard + FIT upload tooling.
+// or "*" (default) for the bundled same-origin dashboard. credentials:true so
+// the session cookie works (origin is reflected, never literal "*").
 const origins = (process.env.CORS_ORIGIN || "*").split(",").map((s) => s.trim());
 app.use(
   cors({
     origin: origins.includes("*") ? true : origins,
+    credentials: true,
   })
 );
 
@@ -22,7 +25,8 @@ app.use(express.json({ limit: "5mb" }));
 
 app.get("/api/health", (_req, res) => res.json({ ok: true, ts: Date.now() }));
 
-app.use("/api", jumpsRouter);
+app.use("/api", authRouter);   // public auth endpoints
+app.use("/api", jumpsRouter);  // jump/stats endpoints (require auth)
 
 // Serve the web dashboard (static) from the same service.
 const webDir = process.env.WEB_DIR || path.join(__dirname, "..", "..", "web");

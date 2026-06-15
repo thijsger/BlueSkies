@@ -14,6 +14,7 @@ db.pragma("journal_mode = WAL");
 db.exec(`
   CREATE TABLE IF NOT EXISTS jumps (
     id            TEXT PRIMARY KEY,
+    user_id       TEXT,
     created_at    TEXT NOT NULL,
     start_time    TEXT NOT NULL,
     end_time      TEXT,
@@ -33,31 +34,78 @@ db.exec(`
     target_lng    REAL,
     data          TEXT NOT NULL  -- full canonical jump JSON (summary+phases+series)
   );
+  CREATE TABLE IF NOT EXISTS users (
+    id            TEXT PRIMARY KEY,
+    email         TEXT UNIQUE,
+    name          TEXT,
+    password_hash TEXT,
+    google_sub    TEXT,
+    api_key       TEXT UNIQUE,
+    created_at    TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS meta ( k TEXT PRIMARY KEY, v TEXT );
 `);
+
+// migration: add user_id to an older jumps table that predates auth
+const cols = db.prepare("PRAGMA table_info(jumps)").all().map((c) => c.name);
+if (!cols.includes("user_id")) {
+  db.exec("ALTER TABLE jumps ADD COLUMN user_id TEXT");
+}
 
 const insertStmt = db.prepare(`
   INSERT INTO jumps (
-    id, created_at, start_time, end_time, source, device, dropzone,
+    id, user_id, created_at, start_time, end_time, source, device, dropzone,
     jump_type, jump_number, notes, exit_altitude, freefall_time, canopy_time,
     peak_vs, peak_hr, duration_sec, target_lat, target_lng, data
   ) VALUES (
-    @id, @created_at, @start_time, @end_time, @source, @device, @dropzone,
+    @id, @user_id, @created_at, @start_time, @end_time, @source, @device, @dropzone,
     @jump_type, @jump_number, @notes, @exit_altitude, @freefall_time, @canopy_time,
     @peak_vs, @peak_hr, @duration_sec, @target_lat, @target_lng, @data
   )
 `);
 
-function nextJumpNumber() {
-  const row = db.prepare("SELECT MAX(jump_number) AS n FROM jumps").get();
+// jump numbering is per user
+function nextJumpNumber(userId) {
+  const row = db.prepare("SELECT MAX(jump_number) AS n FROM jumps WHERE user_id = ?").get(userId);
   return (row && row.n ? row.n : 0) + 1;
 }
 
-export function insertJump(jump) {
+// ---------------------------------------------------------------- users
+export function createUser({ email, name, passwordHash = null, googleSub = null }) {
   const id = randomUUID();
-  const jumpNumber = jump.jumpNumber ?? nextJumpNumber();
+  const apiKey = randomUUID().replace(/-/g, "") + randomUUID().replace(/-/g, "");
+  db.prepare(
+    "INSERT INTO users (id, email, name, password_hash, google_sub, api_key, created_at) VALUES (?,?,?,?,?,?,?)"
+  ).run(id, email, name, passwordHash, googleSub, apiKey, new Date().toISOString());
+  return getUserById(id);
+}
+export function getUserById(id) { return db.prepare("SELECT * FROM users WHERE id = ?").get(id) || null; }
+export function getUserByEmail(email) { return db.prepare("SELECT * FROM users WHERE email = ?").get(email) || null; }
+export function getUserByGoogleSub(sub) { return db.prepare("SELECT * FROM users WHERE google_sub = ?").get(sub) || null; }
+export function getUserByApiKey(key) { return db.prepare("SELECT * FROM users WHERE api_key = ?").get(key) || null; }
+export function linkGoogle(id, sub) { db.prepare("UPDATE users SET google_sub = ? WHERE id = ?").run(sub, id); }
+export function regenerateApiKey(id) {
+  const key = randomUUID().replace(/-/g, "") + randomUUID().replace(/-/g, "");
+  db.prepare("UPDATE users SET api_key = ? WHERE id = ?").run(key, id);
+  return key;
+}
+export function userCount() { return db.prepare("SELECT COUNT(*) AS n FROM users").get().n; }
+// one-time migration: assign pre-auth (ownerless) jumps to the first user
+export function claimOrphanJumps(userId) {
+  db.prepare("UPDATE jumps SET user_id = ? WHERE user_id IS NULL").run(userId);
+}
+
+export function getMeta(k) { const r = db.prepare("SELECT v FROM meta WHERE k = ?").get(k); return r ? r.v : null; }
+export function setMeta(k, v) { db.prepare("INSERT INTO meta (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").run(k, v); }
+
+// ---------------------------------------------------------------- jumps
+export function insertJump(jump, userId) {
+  const id = randomUUID();
+  const jumpNumber = jump.jumpNumber ?? nextJumpNumber(userId);
   const full = { ...jump, id, jumpNumber };
   insertStmt.run({
     id,
+    user_id: userId,
     created_at: full.createdAt,
     start_time: full.startTime,
     end_time: full.endTime || null,
@@ -81,10 +129,10 @@ export function insertJump(jump) {
 }
 
 // list = summaries only (no heavy series), newest first
-export function listJumps() {
+export function listJumps(userId) {
   const rows = db
-    .prepare("SELECT data FROM jumps ORDER BY start_time DESC")
-    .all();
+    .prepare("SELECT data FROM jumps WHERE user_id = ? ORDER BY start_time DESC")
+    .all(userId);
   return rows.map((r) => {
     const j = JSON.parse(r.data);
     return {
@@ -102,22 +150,22 @@ export function listJumps() {
   });
 }
 
-export function getJump(id) {
-  const row = db.prepare("SELECT data FROM jumps WHERE id = ?").get(id);
+export function getJump(id, userId) {
+  const row = db.prepare("SELECT data FROM jumps WHERE id = ? AND user_id = ?").get(id, userId);
   return row ? JSON.parse(row.data) : null;
 }
 
 // full jumps incl. series — used by the stats aggregation (HR time-in-zone)
-export function allJumpsFull() {
+export function allJumpsFull(userId) {
   return db
-    .prepare("SELECT data FROM jumps ORDER BY start_time ASC")
-    .all()
+    .prepare("SELECT data FROM jumps WHERE user_id = ? ORDER BY start_time ASC")
+    .all(userId)
     .map((r) => JSON.parse(r.data));
 }
 
 // patch user-editable fields: jumpType, notes, jumpNumber, target {lat,lng}
-export function updateJump(id, patch) {
-  const jump = getJump(id);
+export function updateJump(id, patch, userId) {
+  const jump = getJump(id, userId);
   if (!jump) return null;
 
   if (patch.jumpType !== undefined) jump.jumpType = patch.jumpType;
@@ -142,9 +190,10 @@ export function updateJump(id, patch) {
 
   db.prepare(
     `UPDATE jumps SET jump_type=@jt, notes=@notes, jump_number=@jn,
-       dropzone=@dz, target_lat=@tlat, target_lng=@tlng, data=@data WHERE id=@id`
+       dropzone=@dz, target_lat=@tlat, target_lng=@tlng, data=@data WHERE id=@id AND user_id=@uid`
   ).run({
     id,
+    uid: userId,
     jt: jump.jumpType || null,
     notes: jump.notes || null,
     jn: jump.jumpNumber ?? null,
@@ -156,8 +205,8 @@ export function updateJump(id, patch) {
   return jump;
 }
 
-export function deleteJump(id) {
-  const r = db.prepare("DELETE FROM jumps WHERE id = ?").run(id);
+export function deleteJump(id, userId) {
+  const r = db.prepare("DELETE FROM jumps WHERE id = ? AND user_id = ?").run(id, userId);
   return r.changes > 0;
 }
 
