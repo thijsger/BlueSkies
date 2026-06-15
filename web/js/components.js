@@ -294,3 +294,30 @@ export function StatsOverview(st) {
 export function capitalize(s) {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
+
+// ---------------------------------------------------------------- RecordsPanel
+// Personal bests; each row links to the jump it belongs to.
+export function RecordsPanel(records, onOpen) {
+  const rows = [
+    { key: "highestExit", icon: "mountain", color: "altitude", label: "Hoogste exit", fmt: (v) => num(v) + " m" },
+    { key: "longestFreefall", icon: "trendingDown", color: "freefall", label: "Langste vrije val", fmt: (v) => fmtDuration(v) },
+    { key: "peakHr", icon: "heart", color: "heart", label: "Hoogste hartslag", fmt: (v) => v + " bpm" },
+    { key: "maxGroundSpeed", icon: "wind", color: "speed", label: "Hoogste grondsnelheid", fmt: (v) => num(v) + " km/u" },
+    { key: "maxGlide", icon: "navigation", color: "track", label: "Beste glijgetal", fmt: (v) => Number(v).toFixed(2) },
+  ];
+  const list = el("div", { class: "records" });
+  for (const r of rows) {
+    const rec = records[r.key];
+    if (!rec || rec.value == null) continue;
+    const row = el("div", { class: "record-row", onclick: rec.id ? () => onOpen(rec.id) : null }, [
+      el("span", { class: "record-ico", "data-color": r.color }, [icon(r.icon, 16)]),
+      el("div", { class: "record-main" }, [
+        el("div", { class: "record-label" }, r.label),
+        el("div", { class: "record-sub" }, rec.jumpNumber != null ? "Sprong #" + rec.jumpNumber : ""),
+      ]),
+      el("div", { class: "record-value" }, r.fmt(rec.value)),
+    ]);
+    list.append(row);
+  }
+  return el("div", { class: "panel" }, [PanelHead("flag", "Persoonlijke records", "speed"), list]);
+}

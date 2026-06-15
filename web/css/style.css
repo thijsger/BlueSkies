@@ -225,6 +225,23 @@ main { max-width: var(--maxw); margin: 0 auto; padding: 1.8rem 1.4rem 3rem; anim
 .chart-card .chart-body { min-height: 250px; }
 .chart-wrap { position: relative; height: 250px; }
 
+/* ---------------- records + currency ---------------- */
+.records { display: flex; flex-direction: column; }
+.record-row { display: flex; align-items: center; gap: 0.8rem; padding: 0.7rem 0.2rem; border-bottom: 1px solid var(--hair); cursor: pointer; transition: background 0.14s; border-radius: 8px; }
+.record-row:last-child { border-bottom: none; }
+.record-row:hover { background: var(--hair); }
+.record-ico { display: flex; width: 32px; height: 32px; border-radius: 9px; align-items: center; justify-content: center; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 22%, transparent); flex-shrink: 0; }
+.record-main { flex: 1; min-width: 0; }
+.record-label { font-weight: 650; font-size: 0.92rem; }
+.record-sub { font-size: 0.76rem; color: var(--dim); }
+.record-value { font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 1.05rem; }
+
+.currency-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.7rem; margin-bottom: 1.4rem; }
+.currency-chip { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.7rem 0.85rem; box-shadow: var(--shadow-sm); }
+.cc-value { font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 1.15rem; }
+.cc-label { font-size: 0.72rem; color: var(--muted); margin-top: 0.15rem; }
+h2 { font-size: 1.15rem; font-weight: 750; letter-spacing: -0.02em; margin: 1.6rem 0 0.9rem; }
+
 /* ---------------- map ---------------- */
 .map-wrap { height: 440px; border-radius: 16px; overflow: hidden; border: 1px solid var(--border); }
 .leaflet-container { background: #dde6f3; font-family: inherit; }
@@ -394,6 +411,7 @@ select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmln
   .tl-ico { display: none; }
 
   .logbook-grid { grid-template-columns: 1fr; }
+  .currency-bar { grid-template-columns: 1fr 1fr; }
   .site-footer { flex-direction: column; gap: 0.25rem; padding: 1.2rem 0.9rem max(1.2rem, env(safe-area-inset-bottom)); }
 }
 

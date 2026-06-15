@@ -341,6 +341,94 @@ export function byDropzoneChart(canvas, byDz) {
   });
 }
 
+// per-jump trend over time (multi-line). keys: [{key,label,color,axis}]
+function trendDates(trend) {
+  return trend.map((p) => new Date(p.date).toLocaleDateString("nl-NL", { day: "2-digit", month: "short", year: "2-digit" }));
+}
+
+export function hrTrendChart(canvas, trend) {
+  const labels = trendDates(trend);
+  const c = METRIC_COLOR.heart;
+  return new Chart(canvas, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        { label: "Piek HR", data: trend.map((p) => p.peakHr), borderColor: c, backgroundColor: fill(c), borderWidth: 2.5, pointRadius: 2, tension: 0.3, fill: true, spanGaps: true },
+        { label: "Gem. HR", data: trend.map((p) => p.avgHr), borderColor: "#9b6bff", borderWidth: 2, pointRadius: 2, tension: 0.3, fill: false, spanGaps: true, borderDash: [5, 4] },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { display: true, labels: { color: AXIS, boxWidth: 12, font: { size: 11 } } },
+        tooltip: { callbacks: { label: (i) => `${i.dataset.label}: ${i.parsed.y ?? "—"} bpm` } } },
+      scales: {
+        x: { ticks: { color: AXIS, maxRotation: 60, maxTicksLimit: 10 }, grid: { color: GRID }, border: { color: BORDER } },
+        y: { title: { display: true, text: "bpm", color: AXIS, font: { size: 10 } }, ticks: { color: AXIS }, grid: { color: GRID }, border: { display: false } },
+      },
+    },
+  });
+}
+
+export function hrZonesChart(canvas, zones) {
+  const colors = ["#9aa6c2", "#5b9bff", "#10d68a", "#e8870f", "#ff5d7a", "#ec2d62"];
+  const mins = zones.map((z) => Math.round(z.sec / 60 * 10) / 10);
+  return new Chart(canvas, {
+    type: "bar",
+    data: { labels: zones.map((z) => z.label), datasets: [{ data: mins, backgroundColor: zones.map((_, i) => colors[i % colors.length]), borderRadius: 6, maxBarThickness: 46 }] },
+    options: {
+      indexAxis: "y",
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { tooltip: { callbacks: { label: (i) => `${i.parsed.x} min`, title: (i) => `Zone ${i[0].label} bpm` } } },
+      scales: {
+        x: { title: { display: true, text: "minuten (cumulatief)", color: AXIS, font: { size: 10 } }, ticks: { color: AXIS }, grid: { color: GRID }, border: { display: false }, beginAtZero: true },
+        y: { ticks: { color: AXIS }, grid: { display: false }, border: { color: BORDER } },
+      },
+    },
+  });
+}
+
+export function perfTrendChart(canvas, trend) {
+  const labels = trendDates(trend);
+  const cA = METRIC_COLOR.altitude, cF = METRIC_COLOR.freefall;
+  return new Chart(canvas, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        { label: "Exit-hoogte (m)", data: trend.map((p) => p.exit), borderColor: cA, backgroundColor: fill(cA), borderWidth: 2.5, pointRadius: 2, tension: 0.3, fill: true, spanGaps: true, yAxisID: "y" },
+        { label: "Vrije val (s)", data: trend.map((p) => p.freefall), borderColor: cF, borderWidth: 2, pointRadius: 2, tension: 0.3, fill: false, spanGaps: true, yAxisID: "y1" },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { display: true, labels: { color: AXIS, boxWidth: 12, font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { color: AXIS, maxRotation: 60, maxTicksLimit: 10 }, grid: { color: GRID }, border: { color: BORDER } },
+        y: { position: "left", title: { display: true, text: "m", color: cA, font: { size: 10 } }, ticks: { color: AXIS }, grid: { color: GRID }, border: { display: false } },
+        y1: { position: "right", title: { display: true, text: "s", color: cF, font: { size: 10 } }, ticks: { color: AXIS }, grid: { drawOnChartArea: false }, border: { display: false } },
+      },
+    },
+  });
+}
+
+export function glideTrendChart(canvas, glideTrend) {
+  const labels = glideTrend.map((p) => new Date(p.date).toLocaleDateString("nl-NL", { day: "2-digit", month: "short", year: "2-digit" }));
+  const c = METRIC_COLOR.track;
+  return new Chart(canvas, {
+    type: "line",
+    data: { labels, datasets: [{ label: "Glijgetal", data: glideTrend.map((p) => p.glide), borderColor: c, backgroundColor: fill(c), borderWidth: 2.5, pointRadius: 3, tension: 0.3, fill: true }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { tooltip: { callbacks: { label: (i) => `Glijgetal: ${i.parsed.y}` } } },
+      scales: {
+        x: { ticks: { color: AXIS, maxRotation: 60, maxTicksLimit: 10 }, grid: { color: GRID }, border: { color: BORDER } },
+        y: { ticks: { color: AXIS }, grid: { color: GRID }, border: { display: false }, beginAtZero: true },
+      },
+    },
+  });
+}
+
 export function exitDistributionChart(canvas, buckets) {
   const keys = Object.keys(buckets).map(Number).sort((a, b) => a - b);
   return new Chart(canvas, {

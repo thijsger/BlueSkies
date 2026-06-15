@@ -5,6 +5,7 @@ import {
   insertJump,
   listJumps,
   getJump,
+  allJumpsFull,
   updateJump,
   deleteJump,
 } from "../db.js";
@@ -147,9 +148,71 @@ router.get("/stats", (_req, res) => {
 
   // currency: days since most recent jump (jumps list is newest-first)
   const lastJumpDate = n ? jumps[0].startTime : null;
+  const now = Date.now();
   const daysSinceLast = lastJumpDate
-    ? Math.floor((Date.now() - new Date(lastJumpDate).getTime()) / 86400000)
+    ? Math.floor((now - new Date(lastJumpDate).getTime()) / 86400000)
     : null;
+
+  // --- richer trends (all from summaries unless noted) ---
+  const trend = [];        // per-jump series over time
+  const glideTrend = [];   // wingsuit/tracking only
+  const records = {
+    highestExit: rec(), longestFreefall: rec(), maxGlide: rec(),
+    maxGroundSpeed: rec(), peakHr: rec(),
+  };
+  let last30 = 0, last90 = 0, prevDate = null, longestGapDays = 0;
+
+  for (const j of sorted) {
+    const s = j.summary || {};
+    const d = new Date(j.startTime);
+    const ageDays = (now - d.getTime()) / 86400000;
+    if (ageDays <= 30) last30++;
+    if (ageDays <= 90) last90++;
+    if (prevDate) {
+      const gap = (d.getTime() - prevDate) / 86400000;
+      if (gap > longestGapDays) longestGapDays = gap;
+    }
+    prevDate = d.getTime();
+
+    trend.push({
+      date: j.startTime, jumpNumber: j.jumpNumber,
+      exit: s.exitAltitude ?? null, freefall: s.freefallTime ?? null,
+      peakHr: s.peakHr ?? null, avgHr: s.avgHr ?? null,
+      maxGroundKmh: s.maxGroundSpeed != null ? Math.round(s.maxGroundSpeed * 3.6) : null,
+    });
+    if (s.glideRatio != null) glideTrend.push({ date: j.startTime, glide: s.glideRatio });
+
+    consider(records.highestExit, s.exitAltitude, j);
+    consider(records.longestFreefall, s.freefallTime, j);
+    consider(records.maxGlide, s.glideRatio, j);
+    consider(records.maxGroundSpeed, s.maxGroundSpeed != null ? Math.round(s.maxGroundSpeed * 3.6) : null, j);
+    consider(records.peakHr, s.peakHr, j);
+  }
+
+  // --- HR time-in-zone across all jumps (needs full series) ---
+  // generic bpm bands (no personal max-HR configured)
+  const zoneEdges = [0, 100, 120, 140, 160, 180, 999];
+  const zoneLabels = ["<100", "100–120", "120–140", "140–160", "160–180", "180+"];
+  const hrZones = new Array(zoneLabels.length).fill(0); // seconds
+  for (const j of allJumpsFull()) {
+    const series = j.series || [];
+    for (let i = 1; i < series.length; i++) {
+      const hr = series[i].hr;
+      if (hr == null || hr <= 0) continue;
+      const dt = (series[i].t - series[i - 1].t) || 1;
+      for (let z = 0; z < zoneLabels.length; z++) {
+        if (hr >= zoneEdges[z] && hr < zoneEdges[z + 1]) { hrZones[z] += dt; break; }
+      }
+    }
+  }
+
+  function rec() { return { value: null, jumpNumber: null, id: null, date: null }; }
+  function consider(r, val, j) {
+    if (val == null) return;
+    if (r.value == null || val > r.value) {
+      r.value = val; r.jumpNumber = j.jumpNumber; r.id = j.id; r.date = j.startTime;
+    }
+  }
 
   res.json({
     totalJumps: n,
@@ -161,12 +224,25 @@ router.get("/stats", (_req, res) => {
     longestFreefall,
     lastJumpDate,
     daysSinceLast,
+    currency: { last30, last90, longestGapDays: Math.round(longestGapDays), avgPerMonth: round1(avgPerMonth(sorted)) },
     perMonth,
     exitBuckets,
     freefallAccrual,
     byDropzone,
     byType,
+    trend,
+    glideTrend,
+    records,
+    hrZones: hrZones.map((sec, i) => ({ label: zoneLabels[i], sec: Math.round(sec) })),
   });
 });
+
+function avgPerMonth(sorted) {
+  if (sorted.length < 1) return 0;
+  const first = new Date(sorted[0].startTime).getTime();
+  const months = Math.max((Date.now() - first) / (86400000 * 30.4), 1);
+  return sorted.length / months;
+}
+function round1(v) { return Math.round(v * 10) / 10; }
 
 export default router;

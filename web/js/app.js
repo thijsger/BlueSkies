@@ -3,12 +3,12 @@ import { el, toast, fmtDuration, fmtDate, num } from "./util.js";
 import { icon } from "./icons.js";
 import {
   MetricCard, JumpPhaseTimeline, ChartCard, JumpHeader, EmptyState,
-  EditJumpForm, StatsOverview, TrackingPanel, shouldShowTracking, capitalize,
+  EditJumpForm, StatsOverview, TrackingPanel, shouldShowTracking, RecordsPanel, capitalize,
 } from "./components.js";
 import {
   altitudeChart, verticalSpeedChart, heartRateChart, groundSpeedChart, combinedChart,
   jumpsPerMonthChart, freefallAccrualChart, exitDistributionChart,
-  byTypeChart, byDropzoneChart, hasValues,
+  byTypeChart, byDropzoneChart, hrTrendChart, hrZonesChart, perfTrendChart, glideTrendChart, hasValues,
 } from "./charts.js";
 import { mount3D } from "./three-view.js";
 import { mountMap } from "./map-view.js";
@@ -263,6 +263,33 @@ function renderStats(st) {
   }
 
   view.append(StatsOverview(st));
+
+  // personal records
+  if (st.records) view.append(RecordsPanel(st.records, (id) => (location.hash = "#/jump/" + id)));
+
+  // currency line
+  if (st.currency) {
+    const c = st.currency;
+    view.append(el("div", { class: "currency-bar" }, [
+      currencyChip("Laatste 30 dagen", c.last30 + " sprong" + (c.last30 === 1 ? "" : "en")),
+      currencyChip("Laatste 90 dagen", c.last90 + " sprong" + (c.last90 === 1 ? "" : "en")),
+      currencyChip("Gem. per maand", String(c.avgPerMonth)),
+      currencyChip("Langste pauze", c.longestGapDays + " dgn"),
+    ]));
+  }
+
+  const trend = st.trend || [];
+  view.append(el("h2", {}, "Trends over tijd"));
+  view.append(ChartCard({ name: "heart", color: "heart", title: "Hartslag per sprong", charts: liveCharts, hasData: trend.some((p) => p.peakHr != null), emptyText: "Nog geen hartslagdata.", build: (cv) => hrTrendChart(cv, trend) }));
+  view.append(el("div", { class: "chart-grid" }, [
+    ChartCard({ name: "activity", color: "heart", title: "Hartslag-zones (totaal)", charts: liveCharts, hasData: (st.hrZones || []).some((z) => z.sec > 0), emptyText: "Nog geen hartslagdata.", build: (cv) => hrZonesChart(cv, st.hrZones) }),
+    ChartCard({ name: "trendingUp", color: "altitude", title: "Exit-hoogte & vrije val", charts: liveCharts, hasData: trend.some((p) => p.exit != null), build: (cv) => perfTrendChart(cv, trend) }),
+  ]));
+  if ((st.glideTrend || []).length > 0) {
+    view.append(ChartCard({ name: "navigation", color: "track", title: "Glijgetal-trend (tracking/wingsuit)", charts: liveCharts, build: (cv) => glideTrendChart(cv, st.glideTrend) }));
+  }
+
+  view.append(el("h2", {}, "Verdelingen"));
   view.append(el("div", { class: "chart-grid" }, [
     ChartCard({ name: "barChart", color: "track", title: "Sprongen per maand", charts: liveCharts, build: (cv) => jumpsPerMonthChart(cv, st.perMonth) }),
     ChartCard({ name: "parachute", color: "freefall", title: "Sprongen per type", charts: liveCharts, hasData: Object.keys(st.byType || {}).length > 0, build: (cv) => byTypeChart(cv, st.byType) }),
@@ -275,6 +302,13 @@ function renderStats(st) {
 }
 
 // ---------------------------------------------------------------- upload
+function currencyChip(label, value) {
+  return el("div", { class: "currency-chip" }, [
+    el("div", { class: "cc-value" }, value),
+    el("div", { class: "cc-label" }, label),
+  ]);
+}
+
 async function uploadView() {
   view.innerHTML = "";
   view.append(pageHead("Upload .FIT", "Exporteer een activiteit van je Garmin als .FIT en sleep hem hierheen. Wordt server-side geparsed in hetzelfde datamodel als een live opname."));

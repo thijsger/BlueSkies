@@ -329,7 +329,8 @@ function buildSummary(series, phases, smoothAlt) {
   const peakHr = hrs.length ? Math.max(...hrs) : null;
   const avgHr = hrs.length ? round(mean(hrs), 0) : null;
 
-  const canopySpeeds = canopy.map((s) => s.groundSpeed).filter((x) => x != null);
+  // clamp out GPS spikes / phase-transition teleports (>45 m/s ≈ 162 km/h is not a real canopy ground speed)
+  const canopySpeeds = canopy.map((s) => s.groundSpeed).filter((x) => x != null && x < 45);
   const maxGroundSpeed = canopySpeeds.length ? round(Math.max(...canopySpeeds), 1) : null;
 
   const horizontalDrift =

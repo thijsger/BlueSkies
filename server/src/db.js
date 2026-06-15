@@ -107,6 +107,14 @@ export function getJump(id) {
   return row ? JSON.parse(row.data) : null;
 }
 
+// full jumps incl. series — used by the stats aggregation (HR time-in-zone)
+export function allJumpsFull() {
+  return db
+    .prepare("SELECT data FROM jumps ORDER BY start_time ASC")
+    .all()
+    .map((r) => JSON.parse(r.data));
+}
+
 // patch user-editable fields: jumpType, notes, jumpNumber, target {lat,lng}
 export function updateJump(id, patch) {
   const jump = getJump(id);
