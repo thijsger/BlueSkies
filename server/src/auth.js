@@ -71,7 +71,7 @@ export function googleClientId() {
 let _gClient = null;
 export async function verifyGoogleToken(idToken) {
   const cid = googleClientId();
-  if (!cid) throw new Error("Google login is niet geconfigureerd op de server.");
+  if (!cid) throw new Error("Google login is not configured on the server.");
   if (!_gClient) _gClient = new OAuth2Client(cid);
   const ticket = await _gClient.verifyIdToken({ idToken, audience: cid });
   const p = ticket.getPayload();
@@ -89,7 +89,7 @@ export function requireAuth(req, res, next) {
   // session cookie
   const uid = verifyToken(readCookie(req, COOKIE));
   if (uid && getUserById(uid)) { req.userId = uid; req.authVia = "session"; return next(); }
-  res.status(401).json({ error: "Niet ingelogd" });
+  res.status(401).json({ error: "Not logged in", code: "not_logged_in" });
 }
 
 export function currentUser(req) {

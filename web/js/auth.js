@@ -8,7 +8,12 @@ async function j(method, path, body) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || res.statusText);
+  if (!res.ok) {
+    const err = new Error(data.error || res.statusText);
+    err.code = data.code;
+    err.status = res.status;
+    throw err;
+  }
   return data;
 }
 
