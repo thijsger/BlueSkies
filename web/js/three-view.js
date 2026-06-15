@@ -137,8 +137,8 @@ export function mount3D(container, scrubInput, playBtn, jump) {
     }
   }
 
-  // --- track as a phase-coloured 3D tube ---
-  const radius = Math.max(horizSpan * 0.004, 2);
+  // --- track as a thin phase-coloured 3D tube (a clean line under the models) ---
+  const radius = Math.max(horizSpan * 0.0011, 1.2);
   let seg = [pts[0]];
   let segPhase = samples[0].phase;
   for (let i = 1; i < pts.length; i++) {
@@ -164,8 +164,9 @@ export function mount3D(container, scrubInput, playBtn, jump) {
   const trackSpan = Math.max(trackBox.getSize(new THREE.Vector3()).length(), horizSpan * 0.4);
 
   // --- ground pins: small precise marker + thin reference pole + label ---
-  const headR = Math.max(radius * 0.7, 2);      // small dot (metres-scale)
-  const poleR = Math.max(radius * 0.08, 0.4);   // thin vertical reference line
+  const pinBase = Math.max(horizSpan * 0.01, 10);
+  const headR = pinBase * 0.5;                   // small dot (metres-scale)
+  const poleR = Math.max(pinBase * 0.07, 0.5);   // thin vertical reference line
   const labelSize = Math.max(horizSpan * 0.015, 10); // keep the label readable
   // EXIT marker = where freefall actually begins (not the first climb sample)
   let exitIdx = 0;
@@ -195,7 +196,7 @@ export function mount3D(container, scrubInput, playBtn, jump) {
   // animated avatar — a little 3D model that changes with the phase and travels
   // the track during playback: plane (climb) → skydiver (freefall) →
   // parachute (canopy) → standing figure (landed).
-  const S = Math.max(horizSpan * 0.022, 45);
+  const S = Math.max(horizSpan * 0.024, 60);
   const models = {
     plane: planeModel(S),
     skydiver: skydiverModel(S),
@@ -308,75 +309,100 @@ function sphere(color, r) {
   return new THREE.Mesh(new THREE.SphereGeometry(r, 16, 16), new THREE.MeshBasicMaterial({ color }));
 }
 
-// ---- little phase models (all face +X = travel forward) ----
-function matt(c) { return new THREE.MeshStandardMaterial({ color: c, roughness: 0.55, metalness: 0.1, emissive: c, emissiveIntensity: 0.12 }); }
-function box(w, h, d, c) { return new THREE.Mesh(new THREE.BoxGeometry(w, h, d), matt(c)); }
+// ---- little phase models (all face +X = travel forward), built from rounded
+//      cylinders + spheres so they read cleanly rather than blocky ----
+const SUIT = 0xe0584f, HELM = 0x20242e, SKIN = 0xe7b48f, METAL = 0xd7e0ee;
+function matt(c) { return new THREE.MeshStandardMaterial({ color: c, roughness: 0.5, metalness: 0.05 }); }
+function ball(r, c) { return new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), matt(c)); }
+// rounded "bone" between two local points (Vector3), with ball joints
+function bone(g, a, b, r, c) {
+  const dir = new THREE.Vector3().subVectors(b, a);
+  const len = dir.length() || 1e-3;
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 10), matt(c));
+  m.position.copy(a).addScaledVector(dir, 0.5);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+  g.add(m);
+  const j1 = ball(r, c); j1.position.copy(a); g.add(j1);
+  const j2 = ball(r, c); j2.position.copy(b); g.add(j2);
+}
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
 
 function planeModel(S) {
   const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.13, S * 0.13, S * 0.95, 14), matt(0xd7e0ee));
-  body.rotation.z = Math.PI / 2; g.add(body);
-  const nose = new THREE.Mesh(new THREE.ConeGeometry(S * 0.13, S * 0.32, 14), matt(0xd7e0ee));
-  nose.rotation.z = -Math.PI / 2; nose.position.x = S * 0.62; g.add(nose);
-  const wing = box(S * 0.28, S * 0.05, S * 1.25, 0xaeb8c9); wing.position.y = S * 0.06; g.add(wing);
-  const stripe = box(S * 0.98, S * 0.05, S * 0.06, 0x4f8dff); g.add(stripe);
-  const tailV = box(S * 0.22, S * 0.3, S * 0.05, 0xaeb8c9); tailV.position.set(-S * 0.42, S * 0.16, 0); g.add(tailV);
-  const tailH = box(S * 0.2, S * 0.04, S * 0.5, 0xaeb8c9); tailH.position.x = -S * 0.42; g.add(tailH);
+  // sleek tapered fuselage + nose cone (nose at +X)
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.07, S * 0.13, S * 0.9, 16), matt(METAL));
+  body.rotation.z = -Math.PI / 2; g.add(body);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(S * 0.13, S * 0.34, 16), matt(METAL));
+  nose.rotation.z = -Math.PI / 2; nose.position.x = S * 0.6; g.add(nose);
+  // swept wings (one thin tapered box) + blue cheatline
+  const wing = new THREE.Mesh(new THREE.BoxGeometry(S * 0.34, S * 0.035, S * 1.5), matt(0xc4ccdb));
+  wing.position.set(-S * 0.02, S * 0.02, 0); g.add(wing);
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(S * 0.92, S * 0.045, S * 0.07), matt(0x4f8dff)); g.add(stripe);
+  // tail fin + stabiliser
+  const fin = new THREE.Mesh(new THREE.BoxGeometry(S * 0.26, S * 0.34, S * 0.04), matt(0xc4ccdb));
+  fin.position.set(-S * 0.42, S * 0.17, 0); g.add(fin);
+  const stab = new THREE.Mesh(new THREE.BoxGeometry(S * 0.22, S * 0.035, S * 0.55), matt(0xc4ccdb));
+  stab.position.x = -S * 0.44; g.add(stab);
   // spinning prop
-  const prop = box(S * 0.04, S * 0.5, S * 0.04, 0x20242e); prop.position.x = S * 0.8;
-  g.add(prop); g.userData.prop = prop;
+  const prop = new THREE.Mesh(new THREE.BoxGeometry(S * 0.03, S * 0.62, S * 0.05), matt(0x20242e));
+  prop.position.x = S * 0.78; g.add(prop); g.userData.prop = prop;
+  g.add(ball(S * 0.06, 0x20242e)).position.x = S * 0.78;
   return g;
 }
 
-// a skydiver in arch / belly-to-earth (lies flat in the XZ plane, head +X)
+// belly-to-earth skydiver in an arch, lying in the XZ plane (head +X, back +Y up)
 function skydiverModel(S) {
   const g = new THREE.Group();
-  const suit = 0xe0584f, helm = 0x20242e, dark = 0x14171f;
-  const torso = box(S * 0.5, S * 0.16, S * 0.34, suit); g.add(torso);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(S * 0.17, 14, 14), matt(helm));
-  head.position.x = S * 0.42; g.add(head);
-  const limb = (lx, lz, len, ang) => {
-    const m = box(len, S * 0.1, S * 0.12, suit);
-    m.position.set(lx, 0, lz); m.rotation.y = ang; return m;
-  };
-  g.add(limb(S * 0.1, -S * 0.45, S * 0.5, 0.6));   // arm
-  g.add(limb(S * 0.1, S * 0.45, S * 0.5, -0.6));
-  g.add(limb(-S * 0.35, -S * 0.4, S * 0.5, 2.5));  // leg
-  g.add(limb(-S * 0.35, S * 0.4, S * 0.5, -2.5));
+  const r = S * 0.07;
+  // torso (hips -> shoulders), slightly arched up
+  bone(g, V(-0.28 * S, 0.06 * S, 0), V(0.22 * S, 0.10 * S, 0), S * 0.11, SUIT);
+  // helmet
+  const head = ball(S * 0.16, HELM); head.position.set(0.44 * S, 0.12 * S, 0); g.add(head);
+  // arms: shoulder -> elbow -> hand, swept out & back, hands lower (arch)
+  bone(g, V(0.18 * S, 0.08 * S, 0.12 * S), V(-0.02 * S, 0.0, 0.5 * S), r, SUIT);
+  bone(g, V(-0.02 * S, 0.0, 0.5 * S), V(-0.2 * S, -0.05 * S, 0.72 * S), r * 0.85, SUIT);
+  bone(g, V(0.18 * S, 0.08 * S, -0.12 * S), V(-0.02 * S, 0.0, -0.5 * S), r, SUIT);
+  bone(g, V(-0.02 * S, 0.0, -0.5 * S), V(-0.2 * S, -0.05 * S, -0.72 * S), r * 0.85, SUIT);
+  // legs: hip -> knee -> foot, spread, feet lower (arch)
+  bone(g, V(-0.26 * S, 0.06 * S, 0.12 * S), V(-0.7 * S, 0.0, 0.4 * S), r, SUIT);
+  bone(g, V(-0.7 * S, 0.0, 0.4 * S), V(-1.0 * S, -0.06 * S, 0.34 * S), r * 0.85, SUIT);
+  bone(g, V(-0.26 * S, 0.06 * S, -0.12 * S), V(-0.7 * S, 0.0, -0.4 * S), r, SUIT);
+  bone(g, V(-0.7 * S, 0.0, -0.4 * S), V(-1.0 * S, -0.06 * S, -0.34 * S), r * 0.85, SUIT);
   return g;
 }
 
-// person hanging under a ram-air canopy
+// person hanging under a ram-air canopy (a smooth arched wing)
 function canopyModel(S) {
   const g = new THREE.Group();
-  // canopy: wide shallow arc made from a thin, slightly curved box row of cells
-  const canopy = new THREE.Group();
-  const cells = 7, cw = (S * 2.0) / cells;
-  for (let i = 0; i < cells; i++) {
-    const t = i / (cells - 1) - 0.5;
-    const cell = box(cw * 0.92, S * 0.12, S * 0.7, i % 2 ? 0x0fbf7c : 0x16e093);
-    cell.position.set(0, -Math.abs(t) * S * 0.35, t * S * 2.0); // slight arc
-    canopy.add(cell);
+  // canopy: open half-cylinder arched across Z, slight span
+  const canopy = new THREE.Mesh(
+    new THREE.CylinderGeometry(S * 1.0, S * 1.0, S * 2.0, 24, 1, true, Math.PI * 1.15, Math.PI * 0.7),
+    new THREE.MeshStandardMaterial({ color: 0x14e093, roughness: 0.6, side: THREE.DoubleSide })
+  );
+  canopy.rotation.x = Math.PI / 2;   // span along Z
+  canopy.position.y = S * 1.35; g.add(canopy);
+  // cell ribs (thin lines across)
+  // risers/lines to the jumper
+  for (const dz of [-S * 0.78, -S * 0.28, S * 0.28, S * 0.78]) {
+    bone(g, V(0, S * 0.18, 0), V(0, S * 1.15, dz), S * 0.012, 0xcdd6e6);
   }
-  canopy.position.y = S * 1.3; g.add(canopy);
-  // lines
-  for (const dz of [-S * 0.7, -S * 0.25, S * 0.25, S * 0.7]) {
-    const ln = box(S * 0.02, S * 1.1, S * 0.02, 0xcdd6e6);
-    ln.position.set(0, S * 0.7, dz); g.add(ln);
-  }
-  // jumper
-  const body = box(S * 0.16, S * 0.4, S * 0.16, 0xe0584f); body.position.y = S * 0.05; g.add(body);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(S * 0.13, 12, 12), matt(0x20242e));
-  head.position.y = S * 0.32; g.add(head);
+  // jumper: torso + helmet + relaxed legs
+  bone(g, V(0, S * 0.18, 0), V(0, -S * 0.18, 0), S * 0.1, SUIT);
+  bone(g, V(0, -S * 0.18, 0), V(S * 0.14, -S * 0.5, 0.1 * S), S * 0.07, SUIT);
+  bone(g, V(0, -S * 0.18, 0), V(S * 0.14, -S * 0.5, -0.1 * S), S * 0.07, SUIT);
+  const head = ball(S * 0.14, HELM); head.position.y = S * 0.3; g.add(head);
   return g;
 }
 
+// standing figure on the ground
 function standModel(S) {
   const g = new THREE.Group();
-  const legs = box(S * 0.16, S * 0.4, S * 0.16, 0xe0584f); legs.position.y = S * 0.2; g.add(legs);
-  const torso = box(S * 0.2, S * 0.4, S * 0.2, 0xe0584f); torso.position.y = S * 0.58; g.add(torso);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(S * 0.14, 12, 12), matt(0x20242e));
-  head.position.y = S * 0.92; g.add(head);
+  bone(g, V(-S * 0.1, S * 0.05, 0), V(-S * 0.12, S * 0.55, 0), S * 0.07, SUIT); // leg
+  bone(g, V(S * 0.1, S * 0.05, 0), V(S * 0.0, S * 0.55, 0), S * 0.07, SUIT);
+  bone(g, V(0, S * 0.55, 0), V(0, S * 0.95, 0), S * 0.1, SUIT);                // torso
+  bone(g, V(0, S * 0.9, 0), V(-S * 0.28, S * 0.62, 0), S * 0.055, SUIT);       // arms
+  bone(g, V(0, S * 0.9, 0), V(S * 0.28, S * 0.62, 0), S * 0.055, SUIT);
+  const head = ball(S * 0.14, HELM); head.position.y = S * 1.12; g.add(head);
   return g;
 }
 
