@@ -20,21 +20,7 @@ class SkydiveDelegate extends WatchUi.BehaviorDelegate {
     function onTap(evt as WatchUi.ClickEvent) as Lang.Boolean { return toggle(); }
     function onSelect() as Lang.Boolean { return toggle(); }
 
-    // long-press or menu starts the animation demo (when not recording)
-    function onHold(evt as WatchUi.ClickEvent) as Lang.Boolean { return startDemo(); }
-    function onMenu() as Lang.Boolean { return startDemo(); }
-
-    function startDemo() as Lang.Boolean {
-        if (!mView.getRecorder().isRecording() && !mView.mDemo) {
-            mView.startDemo();
-        }
-        return true;
-    }
-
     function toggle() as Lang.Boolean {
-        // a tap during the demo just stops it
-        if (mView.mDemo) { mView.stopDemo(); return true; }
-
         var rec = mView.getRecorder();
         if (rec.isRecording()) {
             if (mView.mStopArmed) {
