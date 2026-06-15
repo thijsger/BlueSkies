@@ -192,14 +192,26 @@ export function mount3D(container, scrubInput, playBtn, jump) {
     scene.add(label(text, p, color, labelSize));
   }
 
-  // animated position marker — clearly visible bright dot for the playback
-  const pos = sphere(0xffffff, Math.max(radius * 1.6, 5));
-  pos.add(new THREE.Mesh(
-    new THREE.SphereGeometry(Math.max(radius * 2.4, 8), 16, 16),
-    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.18 })
-  ));
-  pos.position.copy(pts[pts.length - 1]);
-  scene.add(pos);
+  // animated avatar — a little 3D model that changes with the phase and travels
+  // the track during playback: plane (climb) → skydiver (freefall) →
+  // parachute (canopy) → standing figure (landed).
+  const S = Math.max(horizSpan * 0.022, 45);
+  const models = {
+    plane: planeModel(S),
+    skydiver: skydiverModel(S),
+    canopy: canopyModel(S),
+    stand: standModel(S),
+  };
+  const avatar = new THREE.Group();
+  for (const k in models) { models[k].visible = false; avatar.add(models[k]); }
+  avatar.position.copy(pts[pts.length - 1]);
+  scene.add(avatar);
+  const modelForPhase = (ph) =>
+    ph === "climb" ? "plane" : ph === "canopy" ? "canopy" : ph === "landed" ? "stand" : "skydiver";
+  let curModelKey = null;
+  const _X = new THREE.Vector3(1, 0, 0);
+  const _dir = new THREE.Vector3();
+  const _flat = new THREE.Vector3();
 
   // camera framing — lower, cinematic angle so the horizon + sky stay visible
   camera.position.set(center.x + trackSpan * 1.15, trackBox.max.y * 0.55 + trackSpan * 0.22, center.z + trackSpan * 1.5);
@@ -216,13 +228,36 @@ export function mount3D(container, scrubInput, playBtn, jump) {
   let playing = false;
   let head = END; // float playhead index
 
-  // place the marker smoothly between the two surrounding samples
+  // place the avatar smoothly between samples, swap the model per phase, orient it
   function setHead(f) {
     head = Math.max(0, Math.min(END, f));
     const i = Math.floor(head);
+    const j = Math.min(i + 1, END);
     const frac = head - i;
-    pos.position.lerpVectors(pts[i], pts[Math.min(i + 1, END)], frac);
+    avatar.position.lerpVectors(pts[i], pts[j], frac);
     scrubInput.value = head;
+
+    const key = modelForPhase(samples[i].phase);
+    if (key !== curModelKey) {
+      for (const k in models) models[k].visible = (k === key);
+      curModelKey = key;
+      if (key === "skydiver") avatar.rotation.set(0, 0, 0); // belly-down; spin in animate
+    }
+
+    // orient: plane gets pitch+yaw, canopy/stand yaw only, skydiver stays belly-down
+    if (key !== "skydiver") {
+      _dir.subVectors(pts[j], pts[i]);
+      if (_dir.lengthSq() < 1e-6 && i > 0) _dir.subVectors(pts[i], pts[i - 1]);
+      if (_dir.lengthSq() > 1e-6) {
+        _dir.normalize();
+        if (key === "plane") {
+          avatar.quaternion.setFromUnitVectors(_X, _dir);
+        } else {
+          _flat.set(_dir.x, 0, _dir.z);
+          if (_flat.lengthSq() > 1e-6) avatar.quaternion.setFromUnitVectors(_X, _flat.normalize());
+        }
+      }
+    }
   }
   scrubInput.addEventListener("input", () => { playing = false; playBtn.innerHTML = iconSVG("play", 16); setHead(Number(scrubInput.value)); });
   playBtn.addEventListener("click", () => {
@@ -230,6 +265,7 @@ export function mount3D(container, scrubInput, playBtn, jump) {
     playBtn.innerHTML = iconSVG(playing ? "pause" : "play", 16);
     if (playing && head >= END) setHead(0);
   });
+  setHead(END); // show the landed figure initially
 
   let raf, last = performance.now();
   function animate(now) {
@@ -237,9 +273,12 @@ export function mount3D(container, scrubInput, playBtn, jump) {
     const dt = now - last; last = now;
     if (playing) {
       setHead(head + (END / DURATION_MS) * dt); // full run in 30 s
-      controls.target.lerp(pos.position, 0.05);   // camera follows the marker
+      controls.target.lerp(avatar.position, 0.05); // camera follows the avatar
       if (head >= END) { playing = false; playBtn.innerHTML = iconSVG("play", 16); }
     }
+    // gentle spin while free-falling; spinning prop while climbing
+    if (curModelKey === "skydiver") avatar.rotation.y += 0.02;
+    if (curModelKey === "plane" && models.plane.userData.prop) models.plane.userData.prop.rotation.x += 0.6;
     controls.update();
     renderer.render(scene, camera);
   }
@@ -267,6 +306,78 @@ export function mount3D(container, scrubInput, playBtn, jump) {
 
 function sphere(color, r) {
   return new THREE.Mesh(new THREE.SphereGeometry(r, 16, 16), new THREE.MeshBasicMaterial({ color }));
+}
+
+// ---- little phase models (all face +X = travel forward) ----
+function matt(c) { return new THREE.MeshStandardMaterial({ color: c, roughness: 0.55, metalness: 0.1, emissive: c, emissiveIntensity: 0.12 }); }
+function box(w, h, d, c) { return new THREE.Mesh(new THREE.BoxGeometry(w, h, d), matt(c)); }
+
+function planeModel(S) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.13, S * 0.13, S * 0.95, 14), matt(0xd7e0ee));
+  body.rotation.z = Math.PI / 2; g.add(body);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(S * 0.13, S * 0.32, 14), matt(0xd7e0ee));
+  nose.rotation.z = -Math.PI / 2; nose.position.x = S * 0.62; g.add(nose);
+  const wing = box(S * 0.28, S * 0.05, S * 1.25, 0xaeb8c9); wing.position.y = S * 0.06; g.add(wing);
+  const stripe = box(S * 0.98, S * 0.05, S * 0.06, 0x4f8dff); g.add(stripe);
+  const tailV = box(S * 0.22, S * 0.3, S * 0.05, 0xaeb8c9); tailV.position.set(-S * 0.42, S * 0.16, 0); g.add(tailV);
+  const tailH = box(S * 0.2, S * 0.04, S * 0.5, 0xaeb8c9); tailH.position.x = -S * 0.42; g.add(tailH);
+  // spinning prop
+  const prop = box(S * 0.04, S * 0.5, S * 0.04, 0x20242e); prop.position.x = S * 0.8;
+  g.add(prop); g.userData.prop = prop;
+  return g;
+}
+
+// a skydiver in arch / belly-to-earth (lies flat in the XZ plane, head +X)
+function skydiverModel(S) {
+  const g = new THREE.Group();
+  const suit = 0xe0584f, helm = 0x20242e, dark = 0x14171f;
+  const torso = box(S * 0.5, S * 0.16, S * 0.34, suit); g.add(torso);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(S * 0.17, 14, 14), matt(helm));
+  head.position.x = S * 0.42; g.add(head);
+  const limb = (lx, lz, len, ang) => {
+    const m = box(len, S * 0.1, S * 0.12, suit);
+    m.position.set(lx, 0, lz); m.rotation.y = ang; return m;
+  };
+  g.add(limb(S * 0.1, -S * 0.45, S * 0.5, 0.6));   // arm
+  g.add(limb(S * 0.1, S * 0.45, S * 0.5, -0.6));
+  g.add(limb(-S * 0.35, -S * 0.4, S * 0.5, 2.5));  // leg
+  g.add(limb(-S * 0.35, S * 0.4, S * 0.5, -2.5));
+  return g;
+}
+
+// person hanging under a ram-air canopy
+function canopyModel(S) {
+  const g = new THREE.Group();
+  // canopy: wide shallow arc made from a thin, slightly curved box row of cells
+  const canopy = new THREE.Group();
+  const cells = 7, cw = (S * 2.0) / cells;
+  for (let i = 0; i < cells; i++) {
+    const t = i / (cells - 1) - 0.5;
+    const cell = box(cw * 0.92, S * 0.12, S * 0.7, i % 2 ? 0x0fbf7c : 0x16e093);
+    cell.position.set(0, -Math.abs(t) * S * 0.35, t * S * 2.0); // slight arc
+    canopy.add(cell);
+  }
+  canopy.position.y = S * 1.3; g.add(canopy);
+  // lines
+  for (const dz of [-S * 0.7, -S * 0.25, S * 0.25, S * 0.7]) {
+    const ln = box(S * 0.02, S * 1.1, S * 0.02, 0xcdd6e6);
+    ln.position.set(0, S * 0.7, dz); g.add(ln);
+  }
+  // jumper
+  const body = box(S * 0.16, S * 0.4, S * 0.16, 0xe0584f); body.position.y = S * 0.05; g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(S * 0.13, 12, 12), matt(0x20242e));
+  head.position.y = S * 0.32; g.add(head);
+  return g;
+}
+
+function standModel(S) {
+  const g = new THREE.Group();
+  const legs = box(S * 0.16, S * 0.4, S * 0.16, 0xe0584f); legs.position.y = S * 0.2; g.add(legs);
+  const torso = box(S * 0.2, S * 0.4, S * 0.2, 0xe0584f); torso.position.y = S * 0.58; g.add(torso);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(S * 0.14, 12, 12), matt(0x20242e));
+  head.position.y = S * 0.92; g.add(head);
+  return g;
 }
 
 function skyTexture() {
