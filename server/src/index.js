@@ -5,6 +5,11 @@ import { fileURLToPath } from "node:url";
 import jumpsRouter from "./routes/jumps.js";
 import authRouter from "./routes/auth.js";
 
+// NOTE: render.yaml sets rootDir=server, so only changes under server/ trigger a
+// Render auto-deploy. Web-only changes won't redeploy on their own — bump this to
+// force a deploy that ships the latest web/ too.
+const BUILD = "2026-06-15.1";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,7 +28,7 @@ app.use(
 // Live payloads can be a few hundred KB of columnar series data.
 app.use(express.json({ limit: "5mb" }));
 
-app.get("/api/health", (_req, res) => res.json({ ok: true, ts: Date.now() }));
+app.get("/api/health", (_req, res) => res.json({ ok: true, build: BUILD, ts: Date.now() }));
 
 app.use("/api", authRouter);   // public auth endpoints
 app.use("/api", jumpsRouter);  // jump/stats endpoints (require auth)
