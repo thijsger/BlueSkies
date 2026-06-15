@@ -206,22 +206,29 @@ export function mount3D(container, scrubInput, playBtn, jump) {
   controls.target.set(center.x, center.y * 0.5, center.z);
   controls.update();
 
-  // --- scrub / play ---
+  // --- scrub / play (smooth, fixed 30-second playback) ---
+  const END = pts.length - 1;
+  const DURATION_MS = 30000;
   scrubInput.min = 0;
-  scrubInput.max = pts.length - 1;
-  scrubInput.value = pts.length - 1;
+  scrubInput.max = END;
+  scrubInput.step = "any";
+  scrubInput.value = END;
   let playing = false;
-  let idx = pts.length - 1;
-  function setIdx(i) {
-    idx = Math.max(0, Math.min(pts.length - 1, Math.round(i)));
-    pos.position.copy(pts[idx]);
-    scrubInput.value = idx;
+  let head = END; // float playhead index
+
+  // place the marker smoothly between the two surrounding samples
+  function setHead(f) {
+    head = Math.max(0, Math.min(END, f));
+    const i = Math.floor(head);
+    const frac = head - i;
+    pos.position.lerpVectors(pts[i], pts[Math.min(i + 1, END)], frac);
+    scrubInput.value = head;
   }
-  scrubInput.addEventListener("input", () => setIdx(Number(scrubInput.value)));
+  scrubInput.addEventListener("input", () => { playing = false; playBtn.innerHTML = iconSVG("play", 16); setHead(Number(scrubInput.value)); });
   playBtn.addEventListener("click", () => {
     playing = !playing;
     playBtn.innerHTML = iconSVG(playing ? "pause" : "play", 16);
-    if (playing && idx >= pts.length - 1) setIdx(0);
+    if (playing && head >= END) setHead(0);
   });
 
   let raf, last = performance.now();
@@ -229,10 +236,9 @@ export function mount3D(container, scrubInput, playBtn, jump) {
     raf = requestAnimationFrame(animate);
     const dt = now - last; last = now;
     if (playing) {
-      setIdx(idx + (pts.length / 14000) * dt); // ~14 s full run
-      // gently let the camera follow the marker so you "watch the run"
-      controls.target.lerp(pts[idx], 0.04);
-      if (idx >= pts.length - 1) { playing = false; playBtn.innerHTML = iconSVG("play", 16); }
+      setHead(head + (END / DURATION_MS) * dt); // full run in 30 s
+      controls.target.lerp(pos.position, 0.05);   // camera follows the marker
+      if (head >= END) { playing = false; playBtn.innerHTML = iconSVG("play", 16); }
     }
     controls.update();
     renderer.render(scene, camera);

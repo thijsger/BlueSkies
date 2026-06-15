@@ -270,10 +270,7 @@ async function jumpDetailView(id) {
     },
   }));
 
-  // map (ground track on satellite imagery)
-  view.append(mapPanel(jump));
-
-  // 3D track
+  // 3D track (Google-Earth-style satellite world)
   view.append(track3DPanel(jump));
 
   // charts
