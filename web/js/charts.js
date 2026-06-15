@@ -1,4 +1,6 @@
-import { PHASE_COLORS, METRIC_COLOR } from "./util.js";
+import { PHASE_COLORS, METRIC_COLOR, num } from "./util.js";
+import { t } from "./i18n.js";
+import { altValue, altUnit } from "./units.js";
 
 // ---- global theming (light) ----
 const AXIS = "#7a88a3", GRID = "rgba(15,23,42,0.07)", BORDER = "rgba(15,23,42,0.14)";
@@ -188,15 +190,16 @@ function line(color, data, label) {
 // ---- detail charts ----
 export function altitudeChart(canvas, jump) {
   const c = METRIC_COLOR.altitude;
-  const data = jump.series.map((s) => ({ x: s.t, y: s.alt }));
+  const u = altUnit();
+  const data = jump.series.map((s) => ({ x: s.t, y: altValue(s.alt) }));
   const mx = extreme(jump.series, "alt", "max");
   return new Chart(canvas, {
     type: "line",
-    data: { datasets: [line(c, data, "Hoogte")] },
-    options: baseOpts(jump, "meter", {
+    data: { datasets: [line(c, data, t("m.exitAlt"))] },
+    options: baseOpts(jump, u, {
       events: phaseEvents(jump),
-      points: mx ? [{ x: mx.x, y: mx.v, color: c, label: Math.round(mx.v) + " m" }] : [],
-      tooltip: { callbacks: { label: (i) => `Hoogte: ${Math.round(i.parsed.y)} m`, title: (i) => `t = ${i[0].parsed.x}s` } },
+      points: mx ? [{ x: mx.x, y: altValue(mx.v), color: c, label: num(altValue(mx.v)) + " " + u }] : [],
+      tooltip: { callbacks: { label: (i) => `${Math.round(i.parsed.y)} ${u}`, title: (i) => `t = ${i[0].parsed.x}s` } },
     }),
   });
 }
@@ -248,20 +251,21 @@ export function groundSpeedChart(canvas, jump) {
 export function combinedChart(canvas, jump) {
   const cAlt = METRIC_COLOR.altitude;
   const cVs = METRIC_COLOR.freefall;
-  const alt = jump.series.map((s) => ({ x: s.t, y: s.alt }));
+  const u = altUnit();
+  const alt = jump.series.map((s) => ({ x: s.t, y: altValue(s.alt) }));
   const vs = jump.series.map((s) => ({ x: s.t, y: s.fallRate }));
   const opts = baseOpts(jump, null, { events: phaseEvents(jump) });
-  opts.scales.y = { ...opts.scales.y, title: { display: true, text: "hoogte (m)", color: cAlt, font: { size: 10 } }, ticks: { color: AXIS, maxTicksLimit: 6 } };
+  opts.scales.y = { ...opts.scales.y, title: { display: true, text: t("m.exitAlt") + " (" + u + ")", color: cAlt, font: { size: 10 } }, ticks: { color: AXIS, maxTicksLimit: 6 } };
   opts.scales.y1 = {
-    position: "right", title: { display: true, text: "daalsnelheid (m/s)", color: cVs, font: { size: 10 } },
+    position: "right", title: { display: true, text: t("m.peakVs") + " (m/s)", color: cVs, font: { size: 10 } },
     ticks: { color: AXIS, maxTicksLimit: 6 }, grid: { drawOnChartArea: false }, border: { display: false },
   };
   return new Chart(canvas, {
     type: "line",
     data: {
       datasets: [
-        { ...line(cAlt, alt, "Hoogte"), fill: true },
-        { ...line(cVs, vs, "Daalsnelheid"), yAxisID: "y1", fill: false },
+        { ...line(cAlt, alt, t("m.exitAlt")), fill: true },
+        { ...line(cVs, vs, t("phase.freefall")), yAxisID: "y1", fill: false },
       ],
     },
     options: opts,
@@ -354,8 +358,8 @@ export function hrTrendChart(canvas, trend) {
     data: {
       labels,
       datasets: [
-        { label: "Piek HR", data: trend.map((p) => p.peakHr), borderColor: c, backgroundColor: fill(c), borderWidth: 2.5, pointRadius: 2, tension: 0.3, fill: true, spanGaps: true },
-        { label: "Gem. HR", data: trend.map((p) => p.avgHr), borderColor: "#9b6bff", borderWidth: 2, pointRadius: 2, tension: 0.3, fill: false, spanGaps: true, borderDash: [5, 4] },
+        { label: t("m.peakHr"), data: trend.map((p) => p.peakHr), borderColor: c, backgroundColor: fill(c), borderWidth: 2.5, pointRadius: 2, tension: 0.3, fill: true, spanGaps: true },
+        { label: t("m.avgHr"), data: trend.map((p) => p.avgHr), borderColor: "#9b6bff", borderWidth: 2, pointRadius: 2, tension: 0.3, fill: false, spanGaps: true, borderDash: [5, 4] },
       ],
     },
     options: {
@@ -391,13 +395,14 @@ export function hrZonesChart(canvas, zones) {
 export function perfTrendChart(canvas, trend) {
   const labels = trendDates(trend);
   const cA = METRIC_COLOR.altitude, cF = METRIC_COLOR.freefall;
+  const u = altUnit();
   return new Chart(canvas, {
     type: "line",
     data: {
       labels,
       datasets: [
-        { label: "Exit-hoogte (m)", data: trend.map((p) => p.exit), borderColor: cA, backgroundColor: fill(cA), borderWidth: 2.5, pointRadius: 2, tension: 0.3, fill: true, spanGaps: true, yAxisID: "y" },
-        { label: "Vrije val (s)", data: trend.map((p) => p.freefall), borderColor: cF, borderWidth: 2, pointRadius: 2, tension: 0.3, fill: false, spanGaps: true, yAxisID: "y1" },
+        { label: t("m.exitAlt") + " (" + u + ")", data: trend.map((p) => altValue(p.exit)), borderColor: cA, backgroundColor: fill(cA), borderWidth: 2.5, pointRadius: 2, tension: 0.3, fill: true, spanGaps: true, yAxisID: "y" },
+        { label: t("phase.freefall") + " (s)", data: trend.map((p) => p.freefall), borderColor: cF, borderWidth: 2, pointRadius: 2, tension: 0.3, fill: false, spanGaps: true, yAxisID: "y1" },
       ],
     },
     options: {
@@ -405,7 +410,7 @@ export function perfTrendChart(canvas, trend) {
       plugins: { legend: { display: true, labels: { color: AXIS, boxWidth: 12, font: { size: 11 } } } },
       scales: {
         x: { ticks: { color: AXIS, maxRotation: 60, maxTicksLimit: 10 }, grid: { color: GRID }, border: { color: BORDER } },
-        y: { position: "left", title: { display: true, text: "m", color: cA, font: { size: 10 } }, ticks: { color: AXIS }, grid: { color: GRID }, border: { display: false } },
+        y: { position: "left", title: { display: true, text: u, color: cA, font: { size: 10 } }, ticks: { color: AXIS }, grid: { color: GRID }, border: { display: false } },
         y1: { position: "right", title: { display: true, text: "s", color: cF, font: { size: 10 } }, ticks: { color: AXIS }, grid: { drawOnChartArea: false }, border: { display: false } },
       },
     },

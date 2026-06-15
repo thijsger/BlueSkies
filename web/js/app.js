@@ -15,6 +15,7 @@ import { mountMap } from "./map-view.js";
 import { auth } from "./auth.js";
 import { renderLogin } from "./login.js";
 import { t, LANGS, getLang, setLang } from "./i18n.js";
+import { altValue, altUnit, getUnit, setUnit, UNITS } from "./units.js";
 
 let currentUser = null;
 
@@ -32,6 +33,18 @@ function mountLangSelect() {
     sel.append(o);
   }
   sel.onchange = () => setLang(sel.value); // persists + reloads
+
+  const usel = document.getElementById("unit-select");
+  if (usel) {
+    usel.innerHTML = "";
+    for (const u of UNITS) {
+      const o = document.createElement("option");
+      o.value = u.code; o.textContent = u.label;
+      if (u.code === getUnit()) o.selected = true;
+      usel.append(o);
+    }
+    usel.onchange = () => setUnit(usel.value);
+  }
 }
 
 const view = document.getElementById("view");
@@ -109,8 +122,8 @@ function mountUserMenu() {
   const avatar = el("button", { class: "avatar-btn", title: currentUser.email }, initial);
   const menu = el("div", { class: "user-menu hidden" }, [
     el("div", { class: "um-head" }, [el("div", { class: "um-name" }, currentUser.name || "—"), el("div", { class: "um-email" }, currentUser.email)]),
-    el("a", { class: "um-item", href: "#/profile", onclick: () => menu.classList.add("hidden") }, [icon("satellite", 15), "Profiel & watch-key"]),
-    el("button", { class: "um-item", onclick: doLogout }, [icon("logOut", 15), "Uitloggen"]),
+    el("a", { class: "um-item", href: "#/profile", onclick: () => menu.classList.add("hidden") }, [icon("satellite", 15), t("profile.title")]),
+    el("button", { class: "um-item", onclick: doLogout }, [icon("logOut", 15), t("profile.logout")]),
   ]);
   avatar.addEventListener("click", (e) => { e.stopPropagation(); menu.classList.toggle("hidden"); });
   document.addEventListener("click", () => menu.classList.add("hidden"));
@@ -231,7 +244,7 @@ async function jumpDetailView(id) {
 
   // metric cards
   const grid = el("div", { class: "metric-grid" }, [
-    MetricCard({ name: "mountain", color: "altitude", label: t("m.exitAlt"), value: s.exitAltitude != null ? num(s.exitAltitude) : null, unit: "m" }),
+    MetricCard({ name: "mountain", color: "altitude", label: t("m.exitAlt"), value: s.exitAltitude != null ? num(altValue(s.exitAltitude)) : null, unit: altUnit() }),
     MetricCard({ name: "gauge", color: "freefall", label: t("m.peakVs"), value: s.peakVerticalSpeed, unit: "m/s", estimate: true }),
     MetricCard({ name: "gauge", color: "freefall", label: t("m.avgVs"), value: s.avgVerticalSpeed, unit: "m/s", estimate: true }),
     MetricCard({ name: "heart", color: "heart", label: t("m.peakHr"), value: s.peakHr, unit: "bpm" }),
@@ -402,46 +415,46 @@ function currencyChip(label, value) {
 // ---------------------------------------------------------------- profile
 async function profileView() {
   view.innerHTML = "";
-  view.append(el("a", { class: "back", href: "#/logbook" }, [icon("chevronDown", 16, "rot90"), "Terug"]));
-  view.append(pageHead("Profiel", currentUser.email));
+  view.append(el("a", { class: "back", href: "#/logbook" }, [icon("chevronDown", 16, "rot90"), t("btn.back")]));
+  view.append(pageHead(t("profile.title"), currentUser.email));
 
   // account
   view.append(el("div", { class: "panel" }, [
-    el("div", { class: "panel-head" }, [el("span", { class: "panel-ico", "data-color": "track" }, [icon("flag", 17)]), el("h3", {}, "Account")]),
-    el("div", { class: "field" }, [el("span", { class: "field-label" }, "Naam"), el("input", { type: "text", value: currentUser.name || "", disabled: "" })]),
-    el("div", { class: "field" }, [el("span", { class: "field-label" }, "E-mail"), el("input", { type: "text", value: currentUser.email, disabled: "" })]),
-    el("button", { class: "btn ghost sm", onclick: doLogout }, [icon("logOut", 15), "Uitloggen"]),
+    el("div", { class: "panel-head" }, [el("span", { class: "panel-ico", "data-color": "track" }, [icon("flag", 17)]), el("h3", {}, t("profile.account"))]),
+    el("div", { class: "field" }, [el("span", { class: "field-label" }, t("profile.name")), el("input", { type: "text", value: currentUser.name || "", disabled: "" })]),
+    el("div", { class: "field" }, [el("span", { class: "field-label" }, t("profile.email")), el("input", { type: "text", value: currentUser.email, disabled: "" })]),
+    el("button", { class: "btn ghost sm", onclick: doLogout }, [icon("logOut", 15), t("profile.logout")]),
   ]));
 
   // watch API key
   const keyInput = el("input", { type: "text", value: currentUser.apiKey, readonly: "", class: "mono-input" });
-  const copyBtn = el("button", { class: "btn ghost sm", onclick: () => { keyInput.select(); navigator.clipboard?.writeText(currentUser.apiKey); toast("Gekopieerd", "ok"); } }, [icon("save", 15), "Kopieer"]);
+  const copyBtn = el("button", { class: "btn ghost sm", onclick: () => { keyInput.select(); navigator.clipboard?.writeText(currentUser.apiKey); toast(t("toast.copied"), "ok"); } }, [icon("save", 15), t("btn.copy")]);
   const regenBtn = el("button", { class: "btn ghost-danger sm", onclick: async () => {
-    if (!confirm("Nieuwe key genereren? De oude stopt direct met werken (watch opnieuw instellen).")) return;
-    try { const r = await auth.regenerateKey(); currentUser.apiKey = r.apiKey; keyInput.value = r.apiKey; toast("Nieuwe key", "ok"); }
+    if (!confirm(t("regen.confirm"))) return;
+    try { const r = await auth.regenerateKey(); currentUser.apiKey = r.apiKey; keyInput.value = r.apiKey; toast(t("toast.newKey"), "ok"); }
     catch (e) { toast(e.message, "err"); }
-  } }, [icon("refresh", 15), "Vernieuw"]);
+  } }, [icon("refresh", 15), t("btn.regen")]);
 
   view.append(el("div", { class: "panel" }, [
-    el("div", { class: "panel-head" }, [el("span", { class: "panel-ico", "data-color": "altitude" }, [icon("satellite", 17)]), el("h3", {}, "Watch-key (API)")]),
-    el("p", { class: "field-hint" }, "Zet deze key in de Garmin-app (BlueSkies → instellingen → API-key) zodat je horloge sprongen naar jouw account stuurt."),
-    el("div", { class: "inline-edit" }, [el("div", { class: "field", style: "flex:1" }, [el("span", { class: "field-label" }, "Jouw API-key"), keyInput]), copyBtn, regenBtn]),
+    el("div", { class: "panel-head" }, [el("span", { class: "panel-ico", "data-color": "altitude" }, [icon("satellite", 17)]), el("h3", {}, t("profile.watchKey"))]),
+    el("p", { class: "field-hint" }, t("profile.watchKeyHint")),
+    el("div", { class: "inline-edit" }, [el("div", { class: "field", style: "flex:1" }, [el("span", { class: "field-label" }, t("profile.yourKey")), keyInput]), copyBtn, regenBtn]),
   ]));
 }
 
 async function uploadView() {
   view.innerHTML = "";
-  view.append(pageHead("Upload .FIT", "Exporteer een activiteit van je Garmin als .FIT en sleep hem hierheen. Wordt server-side geparsed in hetzelfde datamodel als een live opname."));
+  view.append(pageHead(t("upload.title"), t("upload.sub")));
 
   const JUMP_TYPES = ["", "tandem", "AFF", "fun", "freefly", "tracking", "wingsuit", "hop & pop"];
   const fileInput = el("input", { type: "file", accept: ".fit,.FIT", style: "display:none" });
-  const typeSel = el("select", {}, JUMP_TYPES.map((t) => el("option", { value: t }, t || "— type (optioneel) —")));
+  const typeSel = el("select", {}, JUMP_TYPES.map((tp) => el("option", { value: tp }, tp || t("upload.typeOptional"))));
   const status = el("div", { class: "upload-status" });
 
   const dz = el("div", { class: "dropzone" }, [
     el("div", { class: "dz-ico" }, [icon("upload", 30)]),
-    el("div", { class: "dz-title" }, "Sleep een .FIT hierheen of klik om te kiezen"),
-    el("div", { class: "dz-hint" }, "max 25 MB · wordt automatisch geüpload zodra je een bestand kiest"),
+    el("div", { class: "dz-title" }, t("dz.drop")),
+    el("div", { class: "dz-hint" }, t("dz.hint")),
   ]);
   dz.addEventListener("click", () => fileInput.click());
   dz.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("drag"); });
@@ -451,20 +464,20 @@ async function uploadView() {
 
   async function doUpload(file) {
     status.innerHTML = "";
-    status.append(el("div", { class: "note info" }, [icon("refresh", 15), `Bezig met uploaden en parsen van ${file.name}…`]));
+    status.append(el("div", { class: "note info" }, [icon("refresh", 15), t("upload.parsing", { f: file.name })]));
     try {
       const res = await api.uploadFit(file, { jumpType: typeSel.value });
-      toast("Sprong geïmporteerd (#" + res.jumpNumber + ")", "ok");
+      toast(t("upload.imported", { n: res.jumpNumber }), "ok");
       location.hash = "#/jump/" + res.id;
     } catch (e) {
       status.innerHTML = "";
-      status.append(el("div", { class: "note err" }, [icon("alert", 15), "Upload mislukt: " + e.message]));
+      status.append(el("div", { class: "note err" }, [icon("alert", 15), t("upload.fail", { e: e.message })]));
     }
   }
 
   view.append(el("div", { class: "panel upload-panel" }, [
-    el("label", { class: "field" }, [el("span", { class: "field-label" }, "Type (optioneel)"), typeSel]),
+    el("label", { class: "field" }, [el("span", { class: "field-label" }, t("upload.typeOptional")), typeSel]),
     dz, fileInput, status,
-    el("p", { class: "field-hint" }, "Tip: maak eerst een normale activiteit-opname om de hele pijplijn te testen vóór een echte sprong."),
+    el("p", { class: "field-hint" }, t("upload.tip")),
   ]));
 }
