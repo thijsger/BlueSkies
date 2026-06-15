@@ -157,17 +157,18 @@ function renderLogbook(jumps) {
   const grid = el("div", { class: "logbook-grid" });
   for (const j of jumps) {
     const s = j.summary || {};
+    let card;
     const delBtn = el("button", { class: "jc-del", title: "Verwijder sprong" }, [icon("trash", 15)]);
     delBtn.addEventListener("click", async (e) => {
       e.stopPropagation();
       if (!confirm(`Sprong #${j.jumpNumber} verwijderen?`)) return;
       try {
         await api.deleteJump(j.id);
-        e.currentTarget.closest(".jump-card").remove();
+        if (card) card.remove();
         toast("Sprong verwijderd", "ok");
       } catch (err) { toast("Verwijderen mislukt: " + err.message, "err"); }
     });
-    grid.append(el("div", { class: "jump-card", onclick: () => (location.hash = "#/jump/" + j.id) }, [
+    card = el("div", { class: "jump-card", onclick: () => (location.hash = "#/jump/" + j.id) }, [
       el("div", { class: "jc-rail" }),
       delBtn,
       el("div", { class: "jc-head" }, [
@@ -184,7 +185,8 @@ function renderLogbook(jumps) {
         jcStat("trendingDown", "freefall", "Vrije val", fmtDuration(s.freefallTime)),
         jcStat("heart", "heart", "Piek HR", s.peakHr != null ? s.peakHr + "" : "—"),
       ]),
-    ]));
+    ]);
+    grid.append(card);
   }
   view.append(grid);
 }
