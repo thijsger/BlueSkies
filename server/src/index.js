@@ -4,11 +4,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import jumpsRouter from "./routes/jumps.js";
 import authRouter from "./routes/auth.js";
+import { backupTo } from "./db.js";
 
 // NOTE: render.yaml sets rootDir=server, so only changes under server/ trigger a
 // Render auto-deploy. Web-only changes won't redeploy on their own — bump this to
 // force a deploy that ships the latest web/ too.
-const BUILD = "2026-06-15.4";
+const BUILD = "2026-06-15.5";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -55,6 +56,15 @@ app.use((err, _req, res, _next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Skydive backend listening on :${PORT}`);
+  console.log(`Skydive backend listening on :${PORT} (build ${BUILD})`);
   console.log(`Serving dashboard from ${webDir}`);
 });
+
+// scheduled SQLite backups on the persistent disk (keeps the last 7)
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
+const backupDir = path.join(DATA_DIR, "backups");
+const doBackup = () => backupTo(backupDir, 7)
+  .then((f) => console.log("DB backup ->", f))
+  .catch((e) => console.error("DB backup failed:", e.message));
+setTimeout(doBackup, 60 * 1000);            // shortly after boot
+setInterval(doBackup, 24 * 60 * 60 * 1000); // daily

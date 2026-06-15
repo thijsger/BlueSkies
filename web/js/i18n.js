@@ -200,6 +200,34 @@ const STR = {
   "err.email_password_required": { nl: "E-mail en wachtwoord verplicht.", en: "Email and password are required.", de: "E-Mail und Passwort erforderlich.", fr: "E-mail et mot de passe requis.", es: "Correo y contraseña obligatorios.", it: "Email e password obbligatorie.", pt: "E-mail e palavra-passe obrigatórios.", pl: "E-mail i hasło są wymagane.", sv: "E-post och lösenord krävs.", no: "E-post og passord kreves." },
   "err.rate_limited": { nl: "Te veel pogingen. Wacht even en probeer opnieuw.", en: "Too many attempts. Please wait and try again.", de: "Zu viele Versuche. Bitte kurz warten.", fr: "Trop de tentatives. Patientez un instant.", es: "Demasiados intentos. Espera un momento.", it: "Troppi tentativi. Attendi un momento.", pt: "Demasiadas tentativas. Aguarda um momento.", pl: "Zbyt wiele prób. Poczekaj chwilę.", sv: "För många försök. Vänta en stund.", no: "For mange forsøk. Vent litt." },
   "err.google_failed": { nl: "Google-login mislukt.", en: "Google sign-in failed.", de: "Google-Anmeldung fehlgeschlagen.", fr: "Échec de la connexion Google.", es: "Error al iniciar sesión con Google.", it: "Accesso con Google non riuscito.", pt: "Falha no início de sessão com Google.", pl: "Logowanie Google nie powiodło się.", sv: "Google-inloggning misslyckades.", no: "Google-innlogging mislyktes." },
+  "err.reset_invalid": { nl: "Deze reset-link is ongeldig of verlopen.", en: "This reset link is invalid or has expired." },
+
+  // password reset / forgot
+  "login.forgot": { nl: "Wachtwoord vergeten?", en: "Forgot password?" },
+  "forgot.title": { nl: "Wachtwoord herstellen", en: "Reset password" },
+  "forgot.sub": { nl: "Vul je e-mail in; we sturen een reset-link.", en: "Enter your email and we'll send a reset link." },
+  "forgot.submit": { nl: "Stuur reset-link", en: "Send reset link" },
+  "forgot.sent": { nl: "Als dat e-mailadres bestaat, is er een reset-link verstuurd.", en: "If that email exists, a reset link has been sent." },
+  "reset.title": { nl: "Nieuw wachtwoord", en: "New password" },
+  "reset.sub": { nl: "Kies een nieuw wachtwoord voor je account.", en: "Choose a new password for your account." },
+  "reset.submit": { nl: "Wachtwoord opslaan", en: "Save password" },
+
+  // disclaimer + privacy + export
+  "disclaimer.short": { nl: "Geen veiligheidsinstrument; vrije-val-data zijn schattingen.", en: "Not a safety device; freefall data are estimates." },
+  "footer.privacy": { nl: "Privacy & disclaimer", en: "Privacy & disclaimer" },
+  "profile.export": { nl: "Download mijn data (.json)", en: "Download my data (.json)" },
+  "profile.data": { nl: "Mijn gegevens", en: "My data" },
+  "privacy.title": { nl: "Privacy & disclaimer", en: "Privacy & disclaimer" },
+  "disclaimer.full": {
+    nl: "BlueSkies is een persoonlijk naslag-logboek, GÉÉN veiligheidsinstrument en GÉÉN hoogtemeter. Absolute vrije-val-hoogte en verticale snelheid zijn schattingen (de barometer is onbetrouwbaar tijdens de vrije val). Gebruik altijd een goedgekeurde hoogtemeter en een AAD. In Nederland zijn een papieren logboek, een AAD en een aparte hoogtemeter wettelijk verplicht; deze app vervangt die niet.",
+    en: "BlueSkies is a personal reference logbook, NOT a safety instrument and NOT an altimeter. Absolute freefall altitude and vertical speed are estimates (the barometer is unreliable during freefall). Always use an approved altimeter and an AAD. This app does not replace mandatory equipment or any legally required paper logbook.",
+  },
+  "privacy.body": {
+    nl: "Privacy: we bewaren je naam, e-mailadres en je sprong-data (GPS-track, hoogte, hartslag) om je logboek te tonen. Data staat op een server in de EU (Frankfurt) en wordt niet met derden gedeeld of verkocht. Inloggen met Google gebruikt alleen je naam/e-mail. Je kunt sprongen altijd verwijderen en je data downloaden; vraag accountverwijdering via de beheerder.\n\n" +
+      "Disclaimer: BlueSkies is een persoonlijk naslag-logboek, géén veiligheidsinstrument en géén hoogtemeter. Vrije-val-hoogte en -snelheid zijn schattingen. Gebruik altijd een goedgekeurde hoogtemeter en AAD. Een papieren logboek, AAD en aparte hoogtemeter zijn wettelijk verplicht; deze app vervangt die niet.",
+    en: "Privacy: we store your name, email and jump data (GPS track, altitude, heart rate) to show your logbook. Data is hosted on a server in the EU (Frankfurt) and is never shared or sold. Google sign-in only uses your name/email. You can delete jumps and download your data anytime; request account deletion via the administrator.\n\n" +
+      "Disclaimer: BlueSkies is a personal reference logbook, not a safety instrument and not an altimeter. Freefall altitude and speed are estimates. Always use an approved altimeter and AAD. A paper logbook, AAD and separate altimeter are legally required; this app does not replace them.",
+  },
 };
 
 let LANG = localStorage.getItem("bs_lang");

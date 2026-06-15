@@ -77,6 +77,14 @@ router.get("/jumps", (req, res) => {
   res.json(listJumps(req.userId));
 });
 
+// GET /api/jumps/export  — all of the user's full jumps as a downloadable JSON backup
+router.get("/jumps/export", (req, res) => {
+  const jumps = allJumpsFull(req.userId);
+  res.setHeader("Content-Type", "application/json");
+  res.setHeader("Content-Disposition", `attachment; filename="blueskies-export-${new Date().toISOString().slice(0, 10)}.json"`);
+  res.send(JSON.stringify({ schema: "skydive.v1", exportedAt: new Date().toISOString(), count: jumps.length, jumps }, null, 2));
+});
+
 // GET /api/jumps/:id  — full jump (series + phases)
 router.get("/jumps/:id", (req, res) => {
   const jump = getJump(req.params.id, req.userId);

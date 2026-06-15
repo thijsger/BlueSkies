@@ -416,6 +416,11 @@ select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmln
 .site-footer { max-width: var(--maxw); margin: 0 auto; padding: 1.6rem 1.4rem; display: flex; justify-content: space-between;
   gap: 1rem; flex-wrap: wrap; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.84rem; }
 .foot-brand { font-weight: 800; letter-spacing: -0.02em; }
+.foot-link { color: var(--muted); font-weight: 600; }
+.foot-link:hover { color: var(--accent); }
+.auth-legal { margin-top: 1rem; font-size: 0.72rem; color: var(--dim); text-align: center; line-height: 1.5; }
+.auth-legal a { color: var(--muted); text-decoration: underline; }
+.privacy-p { color: var(--muted); font-size: 0.92rem; line-height: 1.6; margin: 0 0 0.9rem; white-space: pre-wrap; }
 
 /* ---------------- responsive ---------------- */
 @media (max-width: 820px) {

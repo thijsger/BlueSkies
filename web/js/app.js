@@ -65,7 +65,7 @@ function startPoll(fn, ms = 5000) { stopPoll(); pollTimer = setInterval(fn, ms);
 function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
 
 // ---------------------------------------------------------------- router
-const routes = { "": logbookView, "#/logbook": logbookView, "#/stats": statsView, "#/upload": uploadView, "#/profile": profileView };
+const routes = { "": logbookView, "#/logbook": logbookView, "#/stats": statsView, "#/upload": uploadView, "#/profile": profileView, "#/privacy": privacyView };
 
 async function router() {
   if (!currentUser) return; // gated; login screen handles it
@@ -437,6 +437,23 @@ async function profileView() {
     el("p", { class: "field-hint" }, t("profile.watchKeyHint")),
     el("div", { class: "inline-edit" }, [el("div", { class: "field", style: "flex:1" }, [el("span", { class: "field-label" }, t("profile.yourKey")), keyInput]), copyBtn, regenBtn]),
   ]));
+
+  // data export (personal backup the user controls)
+  view.append(el("div", { class: "panel" }, [
+    el("div", { class: "panel-head" }, [el("span", { class: "panel-ico", "data-color": "canopy" }, [icon("save", 17)]), el("h3", {}, t("profile.data"))]),
+    el("a", { class: "btn ghost sm", href: "/api/jumps/export" }, [icon("upload", 15), t("profile.export")]),
+  ]));
+}
+
+function privacyView() {
+  view.innerHTML = "";
+  view.append(el("a", { class: "back", href: "#/logbook" }, [icon("chevronDown", 16, "rot90"), t("btn.back")]));
+  view.append(pageHead(t("privacy.title")));
+  const body = el("div", { class: "panel" }, []);
+  for (const para of t("privacy.body").split("\n\n")) {
+    body.append(el("p", { class: "privacy-p" }, para));
+  }
+  view.append(body);
 }
 
 async function uploadView() {

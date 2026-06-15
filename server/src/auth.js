@@ -96,3 +96,26 @@ export function currentUser(req) {
   const uid = verifyToken(readCookie(req, COOKIE));
   return uid ? getUserById(uid) : null;
 }
+
+// --- email (pluggable) ---
+// Sends via Resend if RESEND_API_KEY is set, otherwise logs the message to the
+// server console so the flow still works in dev / before a provider is added.
+export async function sendEmail(to, subject, text) {
+  const key = process.env.RESEND_API_KEY;
+  const from = process.env.MAIL_FROM || "BlueSkies <onboarding@resend.dev>";
+  if (!key) {
+    console.log(`\n[email→${to}] ${subject}\n${text}\n`);
+    return { delivered: false };
+  }
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from, to, subject, text }),
+    });
+    return { delivered: res.ok };
+  } catch {
+    console.log(`\n[email→${to}] ${subject}\n${text}\n`);
+    return { delivered: false };
+  }
+}

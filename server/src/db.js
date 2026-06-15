@@ -51,6 +51,10 @@ const cols = db.prepare("PRAGMA table_info(jumps)").all().map((c) => c.name);
 if (!cols.includes("user_id")) {
   db.exec("ALTER TABLE jumps ADD COLUMN user_id TEXT");
 }
+// migration: password-reset columns on users
+const ucols = db.prepare("PRAGMA table_info(users)").all().map((c) => c.name);
+if (!ucols.includes("reset_token")) db.exec("ALTER TABLE users ADD COLUMN reset_token TEXT");
+if (!ucols.includes("reset_expiry")) db.exec("ALTER TABLE users ADD COLUMN reset_expiry INTEGER");
 
 const insertStmt = db.prepare(`
   INSERT INTO jumps (
@@ -97,6 +101,30 @@ export function claimOrphanJumps(userId) {
 
 export function getMeta(k) { const r = db.prepare("SELECT v FROM meta WHERE k = ?").get(k); return r ? r.v : null; }
 export function setMeta(k, v) { db.prepare("INSERT INTO meta (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").run(k, v); }
+
+// password reset
+export function setResetToken(userId, token, expiry) {
+  db.prepare("UPDATE users SET reset_token = ?, reset_expiry = ? WHERE id = ?").run(token, expiry, userId);
+}
+export function getUserByResetToken(token) {
+  const u = db.prepare("SELECT * FROM users WHERE reset_token = ?").get(token);
+  return u && u.reset_expiry && u.reset_expiry > Date.now() ? u : null;
+}
+export function setPassword(userId, passwordHash) {
+  db.prepare("UPDATE users SET password_hash = ?, reset_token = NULL, reset_expiry = NULL WHERE id = ?").run(passwordHash, userId);
+}
+
+// online backup of the SQLite file (safe with WAL); keeps the last `keep` copies
+export function backupTo(dir, keep = 7) {
+  fs.mkdirSync(dir, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const dest = path.join(dir, `skydive-${stamp}.db`);
+  return db.backup(dest).then(() => {
+    const files = fs.readdirSync(dir).filter((f) => f.endsWith(".db")).sort();
+    while (files.length > keep) fs.rmSync(path.join(dir, files.shift()), { force: true });
+    return dest;
+  });
+}
 
 // ---------------------------------------------------------------- jumps
 export function insertJump(jump, userId) {

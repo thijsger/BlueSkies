@@ -25,4 +25,6 @@ export const auth = {
   google: (credential) => j("POST", "/api/auth/google", { credential }),
   logout: () => j("POST", "/api/auth/logout"),
   regenerateKey: () => j("POST", "/api/auth/apikey/regenerate"),
+  forgot: (email) => j("POST", "/api/auth/forgot", { email }),
+  reset: (token, password) => j("POST", "/api/auth/reset", { token, password }),
 };

@@ -1,11 +1,13 @@
 import express from "express";
+import crypto from "node:crypto";
 import {
   createUser, getUserByEmail, getUserByGoogleSub, getUserById,
   linkGoogle, regenerateApiKey, userCount, claimOrphanJumps,
+  setResetToken, getUserByResetToken, setPassword,
 } from "../db.js";
 import {
   hashPassword, verifyPassword, signToken, setSessionCookie, clearSessionCookie,
-  verifyGoogleToken, googleClientId, currentUser,
+  verifyGoogleToken, googleClientId, currentUser, sendEmail,
 } from "../auth.js";
 
 const router = express.Router();
@@ -87,6 +89,33 @@ router.post("/auth/google", authLimit, async (req, res) => {
   } catch (err) {
     res.status(401).json({ error: "Google sign-in failed.", code: "google_failed" });
   }
+});
+
+// request a password reset (always 200 so we never reveal which emails exist)
+router.post("/auth/forgot", authLimit, async (req, res) => {
+  const norm = String((req.body || {}).email || "").trim().toLowerCase();
+  const user = norm ? getUserByEmail(norm) : null;
+  if (user) {
+    const token = crypto.randomBytes(24).toString("hex");
+    setResetToken(user.id, token, Date.now() + 60 * 60 * 1000); // 1 hour
+    const origin = (req.headers.origin || `https://${req.headers.host}`).replace(/\/$/, "");
+    const link = `${origin}/#/reset/${token}`;
+    await sendEmail(user.email, "Reset your BlueSkies password",
+      `Open this link to choose a new password (valid for 1 hour):\n${link}\n\nDidn't request this? You can ignore this email.`);
+  }
+  res.json({ ok: true });
+});
+
+// complete a password reset
+router.post("/auth/reset", authLimit, (req, res) => {
+  const { token, password } = req.body || {};
+  if (!token || !password) return res.status(400).json({ error: "Missing token or password.", code: "email_password_required" });
+  if (String(password).length < 8) return res.status(400).json({ error: "Password must be at least 8 characters.", code: "password_too_short" });
+  const user = getUserByResetToken(String(token));
+  if (!user) return res.status(400).json({ error: "This reset link is invalid or has expired.", code: "reset_invalid" });
+  setPassword(user.id, hashPassword(password));
+  setSessionCookie(res, signToken(user.id));
+  res.json({ user: safeUser(user) });
 });
 
 router.post("/auth/logout", (_req, res) => {
