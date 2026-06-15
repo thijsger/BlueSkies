@@ -42,29 +42,30 @@
     <nav>
       <a href="#/logbook" data-nav="logbook">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20"/></svg>
-        <span>Logboek</span>
+        <span data-i18n="nav.logbook">Logboek</span>
       </a>
       <a href="#/stats" data-nav="stats">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M7 21V11"/><path d="M12 21V4"/><path d="M17 21v-7"/></svg>
-        <span>Statistieken</span>
+        <span data-i18n="nav.stats">Statistieken</span>
       </a>
       <a href="#/upload" data-nav="upload">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 9l5-5 5 5"/><path d="M12 4v12"/></svg>
-        <span>Upload</span>
+        <span data-i18n="nav.upload">Upload</span>
       </a>
     </nav>
 
     <div class="sync-badge" title="Automatisch verversen — nieuwe sprongen verschijnen vanzelf">
       <span class="sync-dot"></span>
-      <span>Live</span>
+      <span data-i18n="live">Live</span>
     </div>
+    <select id="lang-select" class="lang-select" aria-label="Language"></select>
   </header>
 
   <main id="view"></main>
 
   <footer class="site-footer">
     <span class="foot-brand">BlueSkies</span>
-    <span class="dim">Persoonlijke skydive-tracker · vrije-val-waarden zijn schattingen</span>
+    <span class="dim" data-i18n="footer.tag">Persoonlijke skydive-tracker · vrije-val-waarden zijn schattingen</span>
   </footer>
 
   <script type="module" src="/js/app.js"></script>

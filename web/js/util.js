@@ -5,13 +5,9 @@ export const PHASE_COLORS = {
   canopy: "#08b97a",
   landed: "#8a93a8",
 };
-export const PHASE_LABEL = {
-  climb: "Klim",
-  exit: "Exit",
-  freefall: "Vrije val",
-  canopy: "Canopy",
-  landed: "Landing",
-};
+// phase labels resolve live through i18n, so all PHASE_LABEL[ph] usages translate
+import { t as _t } from "./i18n.js";
+export const PHASE_LABEL = new Proxy({}, { get: (_o, ph) => _t("phase." + String(ph)) });
 
 // metric accent colors (per spec)
 export const METRIC_COLOR = {

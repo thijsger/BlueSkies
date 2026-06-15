@@ -167,7 +167,12 @@ export function mount3D(container, scrubInput, playBtn, jump) {
   const headR = Math.max(radius * 0.7, 2);      // small dot (metres-scale)
   const poleR = Math.max(radius * 0.08, 0.4);   // thin vertical reference line
   const labelSize = Math.max(horizSpan * 0.015, 10); // keep the label readable
-  pin(pts[0], 0xf6a23b, "EXIT");
+  // EXIT marker = where freefall actually begins (not the first climb sample)
+  let exitIdx = 0;
+  for (let i = 0; i < samples.length; i++) {
+    if (samples[i].phase === "freefall" || samples[i].phase === "exit") { exitIdx = i; break; }
+  }
+  pin(pts[exitIdx], 0xf6a23b, "EXIT");
   pin(pts[pts.length - 1], 0x10d68a, "LANDING");
   if (jump.target && jump.target.lat != null) {
     const tp = new THREE.Vector3((jump.target.lng - lng0) * mPerDegLng, 0, -(jump.target.lat - lat0) * mPerDegLat);
@@ -187,8 +192,12 @@ export function mount3D(container, scrubInput, playBtn, jump) {
     scene.add(label(text, p, color, labelSize));
   }
 
-  // animated position marker — small precise dot (no big halo)
-  const pos = sphere(0xffffff, Math.max(radius * 0.9, 2.5));
+  // animated position marker — clearly visible bright dot for the playback
+  const pos = sphere(0xffffff, Math.max(radius * 1.6, 5));
+  pos.add(new THREE.Mesh(
+    new THREE.SphereGeometry(Math.max(radius * 2.4, 8), 16, 16),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.18 })
+  ));
   pos.position.copy(pts[pts.length - 1]);
   scene.add(pos);
 
@@ -220,7 +229,9 @@ export function mount3D(container, scrubInput, playBtn, jump) {
     raf = requestAnimationFrame(animate);
     const dt = now - last; last = now;
     if (playing) {
-      setIdx(idx + (pts.length / 12000) * dt);
+      setIdx(idx + (pts.length / 14000) * dt); // ~14 s full run
+      // gently let the camera follow the marker so you "watch the run"
+      controls.target.lerp(pts[idx], 0.04);
       if (idx >= pts.length - 1) { playing = false; playBtn.innerHTML = iconSVG("play", 16); }
     }
     controls.update();

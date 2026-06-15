@@ -14,8 +14,25 @@ import { mount3D } from "./three-view.js";
 import { mountMap } from "./map-view.js";
 import { auth } from "./auth.js";
 import { renderLogin } from "./login.js";
+import { t, LANGS, getLang, setLang } from "./i18n.js";
 
 let currentUser = null;
+
+function applyStaticI18n() {
+  document.querySelectorAll("[data-i18n]").forEach((n) => { n.textContent = t(n.getAttribute("data-i18n")); });
+}
+function mountLangSelect() {
+  const sel = document.getElementById("lang-select");
+  if (!sel) return;
+  sel.innerHTML = "";
+  for (const l of LANGS) {
+    const o = document.createElement("option");
+    o.value = l.code; o.textContent = l.label;
+    if (l.code === getLang()) o.selected = true;
+    sel.append(o);
+  }
+  sel.onchange = () => setLang(sel.value); // persists + reloads
+}
 
 const view = document.getElementById("view");
 
@@ -56,6 +73,8 @@ window.addEventListener("hashchange", router);
 
 // ---------------------------------------------------------------- auth boot
 async function boot() {
+  applyStaticI18n();
+  mountLangSelect();
   try {
     const { user } = await auth.me();
     if (user) { currentUser = user; onLoggedIn(); }
@@ -130,7 +149,7 @@ async function logbookView() {
     const jumps = await api.listJumps();
     const newSig = jumps.map((j) => j.id + (j.jumpType || "")).join(",") + "|" + jumps.length;
     if (newSig === sig) return;
-    if (sig !== null && jumps.length > prev) toast("Nieuwe sprong binnengekomen", "ok");
+    if (sig !== null && jumps.length > prev) toast(t("toast.newJump"), "ok");
     sig = newSig; prev = jumps.length;
     renderLogbook(jumps);
   }
@@ -140,16 +159,16 @@ async function logbookView() {
 
 function renderLogbook(jumps) {
   view.innerHTML = "";
-  const uploadBtn = el("a", { class: "btn primary", href: "#/upload" }, [icon("upload", 16), "Upload .FIT"]);
-  view.append(pageHead("Logboek",
-    jumps.length ? `${jumps.length} sprong${jumps.length === 1 ? "" : "en"} · synct automatisch` : "Persoonlijk skydive-logboek",
+  const uploadBtn = el("a", { class: "btn primary", href: "#/upload" }, [icon("upload", 16), t("btn.uploadFit")]);
+  view.append(pageHead(t("logbook.title"),
+    jumps.length ? t("logbook.count", { n: jumps.length }) : t("logbook.subDefault"),
     uploadBtn));
 
   if (!jumps.length) {
     view.append(EmptyState({
-      name: "parachute", title: "Nog geen sprongen",
-      text: "Upload een .FIT-bestand of maak je eerste opname met de Garmin-app. Nieuwe sprongen verschijnen hier automatisch.",
-      action: el("a", { class: "btn primary", href: "#/upload" }, [icon("upload", 16), "Upload .FIT"]),
+      name: "parachute", title: t("empty.noJumps.title"),
+      text: t("empty.noJumps.text"),
+      action: el("a", { class: "btn primary", href: "#/upload" }, [icon("upload", 16), t("btn.uploadFit")]),
     }));
     return;
   }
@@ -158,15 +177,15 @@ function renderLogbook(jumps) {
   for (const j of jumps) {
     const s = j.summary || {};
     let card;
-    const delBtn = el("button", { class: "jc-del", title: "Verwijder sprong" }, [icon("trash", 15)]);
+    const delBtn = el("button", { class: "jc-del", title: t("jump.delete") }, [icon("trash", 15)]);
     delBtn.addEventListener("click", async (e) => {
       e.stopPropagation();
-      if (!confirm(`Sprong #${j.jumpNumber} verwijderen?`)) return;
+      if (!confirm(t("jump.deleteConfirm", { n: j.jumpNumber }))) return;
       try {
         await api.deleteJump(j.id);
         if (card) card.remove();
-        toast("Sprong verwijderd", "ok");
-      } catch (err) { toast("Verwijderen mislukt: " + err.message, "err"); }
+        toast(t("toast.deleted"), "ok");
+      } catch (err) { toast(t("toast.deleteFail", { e: err.message }), "err"); }
     });
     card = el("div", { class: "jump-card", onclick: () => (location.hash = "#/jump/" + j.id) }, [
       el("div", { class: "jc-rail" }),
@@ -178,12 +197,12 @@ function renderLogbook(jumps) {
           el("div", { class: "jc-date" }, fmtDate(j.startTime)),
         ]),
       ]),
-      el("div", { class: "jc-dz" }, [icon("mapPin", 15), j.dropzone || "Onbekende dropzone",
+      el("div", { class: "jc-dz" }, [icon("mapPin", 15), j.dropzone || t("dz.unknown"),
         j.jumpType ? el("span", { class: "jc-type" }, capitalize(j.jumpType)) : null]),
       el("div", { class: "jc-stats" }, [
-        jcStat("mountain", "altitude", "Exit", s.exitAltitude != null ? num(s.exitAltitude) + " m" : "—"),
-        jcStat("trendingDown", "freefall", "Vrije val", fmtDuration(s.freefallTime)),
-        jcStat("heart", "heart", "Piek HR", s.peakHr != null ? s.peakHr + "" : "—"),
+        jcStat("mountain", "altitude", t("phase.exit"), s.exitAltitude != null ? num(s.exitAltitude) + " m" : "—"),
+        jcStat("trendingDown", "freefall", t("phase.freefall"), fmtDuration(s.freefallTime)),
+        jcStat("heart", "heart", t("m.peakHr"), s.peakHr != null ? s.peakHr + "" : "—"),
       ]),
     ]);
     grid.append(card);
@@ -204,7 +223,7 @@ async function jumpDetailView(id) {
   view.innerHTML = "";
   const s = jump.summary || {};
 
-  view.append(el("a", { class: "back", href: "#/logbook" }, [icon("chevronDown", 16, "rot90"), "Terug naar logboek"]));
+  view.append(el("a", { class: "back", href: "#/logbook" }, [icon("chevronDown", 16, "rot90"), t("back.logbook")]));
   view.append(JumpHeader(jump));
 
   // phase timeline
@@ -212,14 +231,14 @@ async function jumpDetailView(id) {
 
   // metric cards
   const grid = el("div", { class: "metric-grid" }, [
-    MetricCard({ name: "mountain", color: "altitude", label: "Exit-hoogte", value: s.exitAltitude != null ? num(s.exitAltitude) : null, unit: "m" }),
-    MetricCard({ name: "gauge", color: "freefall", label: "Piek daalsnelheid", value: s.peakVerticalSpeed, unit: "m/s", estimate: true }),
-    MetricCard({ name: "gauge", color: "freefall", label: "Gem. daalsnelheid", value: s.avgVerticalSpeed, unit: "m/s", estimate: true }),
-    MetricCard({ name: "heart", color: "heart", label: "Piek hartslag", value: s.peakHr, unit: "bpm" }),
-    MetricCard({ name: "heart", color: "heart", label: "Gem. hartslag", value: s.avgHr, unit: "bpm" }),
-    MetricCard({ name: "wind", color: "speed", label: "Max grondsnelheid", value: s.maxGroundSpeed != null ? Math.round(s.maxGroundSpeed * 3.6) : null, unit: "km/u" }),
-    MetricCard({ name: "move", color: "track", label: "Horizontale drift", value: s.horizontalDrift != null ? num(s.horizontalDrift) : null, unit: "m" }),
-    MetricCard({ name: "target", color: "track", label: "Afstand tot target", value: s.distanceToTarget != null ? num(s.distanceToTarget) : null, unit: "m", placeholder: "Geen target" }),
+    MetricCard({ name: "mountain", color: "altitude", label: t("m.exitAlt"), value: s.exitAltitude != null ? num(s.exitAltitude) : null, unit: "m" }),
+    MetricCard({ name: "gauge", color: "freefall", label: t("m.peakVs"), value: s.peakVerticalSpeed, unit: "m/s", estimate: true }),
+    MetricCard({ name: "gauge", color: "freefall", label: t("m.avgVs"), value: s.avgVerticalSpeed, unit: "m/s", estimate: true }),
+    MetricCard({ name: "heart", color: "heart", label: t("m.peakHr"), value: s.peakHr, unit: "bpm" }),
+    MetricCard({ name: "heart", color: "heart", label: t("m.avgHr"), value: s.avgHr, unit: "bpm" }),
+    MetricCard({ name: "wind", color: "speed", label: t("m.maxGround"), value: s.maxGroundSpeed != null ? Math.round(s.maxGroundSpeed * 3.6) : null, unit: "km/u" }),
+    MetricCard({ name: "move", color: "track", label: t("m.drift"), value: s.horizontalDrift != null ? num(s.horizontalDrift) : null, unit: "m" }),
+    MetricCard({ name: "target", color: "track", label: t("m.distTarget"), value: s.distanceToTarget != null ? num(s.distanceToTarget) : null, unit: "m", placeholder: t("noTarget") }),
   ]);
   view.append(grid);
 
@@ -229,12 +248,12 @@ async function jumpDetailView(id) {
   // edit form (collapsible)
   view.append(EditJumpForm(jump, {
     onSave: async (patch) => {
-      try { await api.updateJump(jump.id, patch); toast("Opgeslagen", "ok"); router(); }
-      catch (e) { toast("Opslaan mislukt: " + e.message, "err"); }
+      try { await api.updateJump(jump.id, patch); toast(t("toast.saved"), "ok"); router(); }
+      catch (e) { toast(t("toast.saveFail", { e: e.message }), "err"); }
     },
     onDelete: async () => {
-      try { await api.deleteJump(jump.id); toast("Sprong verwijderd", "ok"); location.hash = "#/logbook"; }
-      catch (e) { toast("Verwijderen mislukt: " + e.message, "err"); }
+      try { await api.deleteJump(jump.id); toast(t("toast.deleted"), "ok"); location.hash = "#/logbook"; }
+      catch (e) { toast(t("toast.deleteFail", { e: e.message }), "err"); }
     },
   }));
 
@@ -247,24 +266,24 @@ async function jumpDetailView(id) {
   // charts
   const series = jump.series || [];
   view.append(el("div", { class: "chart-grid" }, [
-    ChartCard({ name: "mountain", color: "altitude", title: "Hoogte vs tijd", charts: liveCharts, hasData: hasValues(series, "alt"), build: (cv) => altitudeChart(cv, jump) }),
-    ChartCard({ name: "gauge", color: "freefall", title: "Daalsnelheid vs tijd", badge: "schatting", charts: liveCharts, hasData: hasValues(series, "fallRate"), build: (cv) => verticalSpeedChart(cv, jump) }),
-    ChartCard({ name: "heart", color: "heart", title: "Hartslag vs tijd", charts: liveCharts, hasData: hasValues(series, "hr"), build: (cv) => heartRateChart(cv, jump) }),
-    ChartCard({ name: "wind", color: "canopy", title: "Grondsnelheid — canopy", charts: liveCharts, hasData: series.some((s2) => s2.phase === "canopy" && s2.groundSpeed != null), emptyText: "Geen GPS-grondsnelheid in de canopy-fase.", build: (cv) => groundSpeedChart(cv, jump) }),
+    ChartCard({ name: "mountain", color: "altitude", title: t("chart.altTime"), charts: liveCharts, hasData: hasValues(series, "alt"), build: (cv) => altitudeChart(cv, jump) }),
+    ChartCard({ name: "gauge", color: "freefall", title: t("chart.vsTime"), badge: t("estimate"), charts: liveCharts, hasData: hasValues(series, "fallRate"), build: (cv) => verticalSpeedChart(cv, jump) }),
+    ChartCard({ name: "heart", color: "heart", title: t("chart.hrTime"), charts: liveCharts, hasData: hasValues(series, "hr"), build: (cv) => heartRateChart(cv, jump) }),
+    ChartCard({ name: "wind", color: "canopy", title: t("chart.groundCanopy"), charts: liveCharts, hasData: series.some((s2) => s2.phase === "canopy" && s2.groundSpeed != null), build: (cv) => groundSpeedChart(cv, jump) }),
   ]));
-  view.append(ChartCard({ name: "activity", color: "altitude", title: "Hoogte + daalsnelheid", charts: liveCharts, hasData: hasValues(series, "alt"), build: (cv) => combinedChart(cv, jump) }));
+  view.append(ChartCard({ name: "activity", color: "altitude", title: t("chart.combined"), charts: liveCharts, hasData: hasValues(series, "alt"), build: (cv) => combinedChart(cv, jump) }));
 }
 
 function mapPanel(jump) {
   const hasGps = (jump.series || []).some((s) => s.lat != null && s.lng != null);
   const head = el("div", { class: "panel-head" }, [
     el("span", { class: "panel-ico", "data-color": "canopy" }, [icon("mapPin", 17)]),
-    el("h3", {}, "Kaart — grondtrack"),
+    el("h3", {}, t("panel.map")),
   ]);
   if (!hasGps) {
     return el("div", { class: "panel" }, [head, EmptyState({
-      name: "satellite", title: "Geen GPS-track beschikbaar",
-      text: "Deze opname bevat geen GPS-posities, dus er is geen kaart te tonen.",
+      name: "satellite", title: t("threeD.noGps"),
+      text: t("map.noGps"),
     })]);
   }
   const container = el("div", { class: "map-wrap" });
@@ -277,21 +296,21 @@ function track3DPanel(jump) {
   const hasGps = (jump.series || []).some((s) => s.lat != null && s.lng != null);
   const head = el("div", { class: "panel-head" }, [
     el("span", { class: "panel-ico", "data-color": "track" }, [icon("cube", 17)]),
-    el("h3", {}, "3D-sprongtrack"),
+    el("h3", {}, t("panel.3d")),
   ]);
 
   if (!hasGps) {
     return el("div", { class: "panel track-panel" }, [head, EmptyState({
-      name: "satellite", title: "Geen GPS-track beschikbaar",
-      text: "Deze opname bevat geen GPS-posities. Maak een opname buiten met GPS-fix, of upload een .FIT met locatiedata om de 3D-track te zien.",
-      action: el("a", { class: "btn ghost", href: "#/upload" }, [icon("upload", 15), "Upload .FIT"]),
+      name: "satellite", title: t("threeD.noGps"),
+      text: t("map.noGps"),
+      action: el("a", { class: "btn ghost", href: "#/upload" }, [icon("upload", 15), t("btn.uploadFit")]),
     })]);
   }
 
   const phaseChips = el("div", { class: "track-chips" });
-  for (const [ph, label] of [["climb", "Klim"], ["exit", "Exit"], ["freefall", "Vrije val"], ["canopy", "Canopy"], ["landed", "Landing"]]) {
+  for (const ph of ["climb", "exit", "freefall", "canopy", "landed"]) {
     phaseChips.append(el("span", { class: "phase-chip", "data-phase": ph }, [
-      el("span", { class: "dot", "data-phase": ph }), label,
+      el("span", { class: "dot", "data-phase": ph }), t("phase." + ph),
     ]));
   }
 
@@ -322,13 +341,13 @@ function renderStats(st) {
   liveCharts.forEach((c) => c.destroy());
   liveCharts = [];
   view.innerHTML = "";
-  view.append(pageHead("Statistieken", st.totalJumps ? "Cumulatieve cijfers en trends · synct automatisch" : "Cumulatieve cijfers en trends over al je sprongen"));
+  view.append(pageHead(t("stats.title"), st.totalJumps ? t("stats.subAuto") : t("stats.subDefault")));
 
   if (!st.totalJumps) {
     view.append(EmptyState({
-      name: "barChart", title: "Nog geen statistieken",
-      text: "Zodra je eerste sprong binnen is, verschijnen hier je totalen en trends.",
-      action: el("a", { class: "btn primary", href: "#/upload" }, [icon("upload", 16), "Upload .FIT"]),
+      name: "barChart", title: t("stats.emptyTitle"),
+      text: t("stats.emptyText"),
+      action: el("a", { class: "btn primary", href: "#/upload" }, [icon("upload", 16), t("btn.uploadFit")]),
     }));
     return;
   }
@@ -342,34 +361,34 @@ function renderStats(st) {
   if (st.currency) {
     const c = st.currency;
     view.append(el("div", { class: "currency-bar" }, [
-      currencyChip("Laatste 30 dagen", c.last30 + " sprong" + (c.last30 === 1 ? "" : "en")),
-      currencyChip("Laatste 90 dagen", c.last90 + " sprong" + (c.last90 === 1 ? "" : "en")),
-      currencyChip("Gem. per maand", String(c.avgPerMonth)),
-      currencyChip("Langste pauze", c.longestGapDays + " dgn"),
+      currencyChip(t("cur.last30"), t("cur.jumpsN", { n: c.last30 })),
+      currencyChip(t("cur.last90"), t("cur.jumpsN", { n: c.last90 })),
+      currencyChip(t("cur.avgMonth"), String(c.avgPerMonth)),
+      currencyChip(t("cur.gap"), c.longestGapDays + " " + t("unit.days")),
     ]));
   }
 
   const trend = st.trend || [];
-  view.append(el("h2", {}, "Trends over tijd"));
-  view.append(ChartCard({ name: "heart", color: "heart", title: "Hartslag per sprong", charts: liveCharts, hasData: trend.some((p) => p.peakHr != null), emptyText: "Nog geen hartslagdata.", build: (cv) => hrTrendChart(cv, trend) }));
+  view.append(el("h2", {}, t("sec.trends")));
+  view.append(ChartCard({ name: "heart", color: "heart", title: t("chart.hrPerJump"), charts: liveCharts, hasData: trend.some((p) => p.peakHr != null), build: (cv) => hrTrendChart(cv, trend) }));
   view.append(el("div", { class: "chart-grid" }, [
-    ChartCard({ name: "activity", color: "heart", title: "Hartslag-zones (totaal)", charts: liveCharts, hasData: (st.hrZones || []).some((z) => z.sec > 0), emptyText: "Nog geen hartslagdata.", build: (cv) => hrZonesChart(cv, st.hrZones) }),
-    ChartCard({ name: "trendingUp", color: "altitude", title: "Exit-hoogte & vrije val", charts: liveCharts, hasData: trend.some((p) => p.exit != null), build: (cv) => perfTrendChart(cv, trend) }),
+    ChartCard({ name: "activity", color: "heart", title: t("chart.hrZones"), charts: liveCharts, hasData: (st.hrZones || []).some((z) => z.sec > 0), build: (cv) => hrZonesChart(cv, st.hrZones) }),
+    ChartCard({ name: "trendingUp", color: "altitude", title: t("chart.exitFf"), charts: liveCharts, hasData: trend.some((p) => p.exit != null), build: (cv) => perfTrendChart(cv, trend) }),
   ]));
   if ((st.glideTrend || []).length > 0) {
-    view.append(ChartCard({ name: "navigation", color: "track", title: "Glijgetal-trend (tracking/wingsuit)", charts: liveCharts, build: (cv) => glideTrendChart(cv, st.glideTrend) }));
+    view.append(ChartCard({ name: "navigation", color: "track", title: t("chart.glideTrend"), charts: liveCharts, build: (cv) => glideTrendChart(cv, st.glideTrend) }));
   }
 
-  view.append(el("h2", {}, "Verdelingen"));
+  view.append(el("h2", {}, t("sec.distributions")));
   view.append(el("div", { class: "chart-grid" }, [
-    ChartCard({ name: "barChart", color: "track", title: "Sprongen per maand", charts: liveCharts, build: (cv) => jumpsPerMonthChart(cv, st.perMonth) }),
-    ChartCard({ name: "parachute", color: "freefall", title: "Sprongen per type", charts: liveCharts, hasData: Object.keys(st.byType || {}).length > 0, build: (cv) => byTypeChart(cv, st.byType) }),
+    ChartCard({ name: "barChart", color: "track", title: t("chart.perMonth"), charts: liveCharts, build: (cv) => jumpsPerMonthChart(cv, st.perMonth) }),
+    ChartCard({ name: "parachute", color: "freefall", title: t("chart.perType"), charts: liveCharts, hasData: Object.keys(st.byType || {}).length > 0, build: (cv) => byTypeChart(cv, st.byType) }),
   ]));
   view.append(el("div", { class: "chart-grid" }, [
-    ChartCard({ name: "mapPin", color: "canopy", title: "Sprongen per dropzone", charts: liveCharts, hasData: Object.keys(st.byDropzone || {}).length > 0, build: (cv) => byDropzoneChart(cv, st.byDropzone) }),
-    ChartCard({ name: "mountain", color: "altitude", title: "Verdeling exit-hoogtes", charts: liveCharts, hasData: Object.keys(st.exitBuckets).length > 0, build: (cv) => exitDistributionChart(cv, st.exitBuckets) }),
+    ChartCard({ name: "mapPin", color: "canopy", title: t("chart.perDz"), charts: liveCharts, hasData: Object.keys(st.byDropzone || {}).length > 0, build: (cv) => byDropzoneChart(cv, st.byDropzone) }),
+    ChartCard({ name: "mountain", color: "altitude", title: t("chart.exitDist"), charts: liveCharts, hasData: Object.keys(st.exitBuckets).length > 0, build: (cv) => exitDistributionChart(cv, st.exitBuckets) }),
   ]));
-  view.append(ChartCard({ name: "trendingUp", color: "freefall", title: "Cumulatieve vrije-val-tijd", charts: liveCharts, hasData: st.freefallAccrual.length > 0, build: (cv) => freefallAccrualChart(cv, st.freefallAccrual) }));
+  view.append(ChartCard({ name: "trendingUp", color: "freefall", title: t("chart.cumFf"), charts: liveCharts, hasData: st.freefallAccrual.length > 0, build: (cv) => freefallAccrualChart(cv, st.freefallAccrual) }));
 }
 
 // ---------------------------------------------------------------- upload
