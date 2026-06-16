@@ -20,7 +20,28 @@ class SkydiveDelegate extends WatchUi.BehaviorDelegate {
     function onTap(evt as WatchUi.ClickEvent) as Lang.Boolean { return toggle(); }
     function onSelect() as Lang.Boolean { return toggle(); }
 
+    // long-press opens the clean phase viewer (showcase) for screenshots
+    function onHold(evt as WatchUi.ClickEvent) as Lang.Boolean {
+        if (!mView.getRecorder().isRecording()) { mView.startShowcase(); return true; }
+        return false;
+    }
+    function onMenu() as Lang.Boolean {
+        if (!mView.getRecorder().isRecording() && !mView.mShowcase) { mView.startShowcase(); return true; }
+        return false;
+    }
+
+    // swipe left/right between phases in the showcase; swipe down exits
+    function onSwipe(swipeEvent as WatchUi.SwipeEvent) as Lang.Boolean {
+        if (!mView.mShowcase) { return false; }
+        var d = swipeEvent.getDirection();
+        if (d == WatchUi.SWIPE_LEFT) { mView.showStep(1); }
+        else if (d == WatchUi.SWIPE_RIGHT) { mView.showStep(-1); }
+        else if (d == WatchUi.SWIPE_DOWN) { mView.stopShowcase(); }
+        return true;
+    }
+
     function toggle() as Lang.Boolean {
+        if (mView.mShowcase) { mView.stopShowcase(); return true; } // tap exits showcase
         var rec = mView.getRecorder();
         if (rec.isRecording()) {
             if (mView.mStopArmed) {

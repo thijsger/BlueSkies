@@ -32,6 +32,21 @@ class SkydiveView extends WatchUi.View {
     var mAnimTimer as Timer.Timer? = null;
     var mFrame as Number = 0;
 
+    // showcase: clean swipeable phase viewer (for marketing screenshots)
+    var mShowcase as Boolean = false;
+    var mShowPhase as Number = 0;
+
+    function startShowcase() as Void {
+        if (mRecorder.isRecording()) { return; }
+        mShowcase = true; mShowPhase = CLIMB; ensureAnim(); WatchUi.requestUpdate();
+    }
+    function stopShowcase() as Void {
+        mShowcase = false; if (!mRecorder.isRecording()) { stopAnim(); } WatchUi.requestUpdate();
+    }
+    function showStep(d as Number) as Void {
+        mShowPhase = (mShowPhase + d + 5) % 5; WatchUi.requestUpdate();
+    }
+
     function initialize() {
         View.initialize();
         mRecorder = new JumpRecorder();
@@ -63,13 +78,41 @@ class SkydiveView extends WatchUi.View {
         dc.clear();
         var w = dc.getWidth();
         var h = dc.getHeight();
-        if (mRecorder.isRecording()) {
+        if (mShowcase) {
+            ensureAnim();
+            drawShowcase(dc, w, h);
+        } else if (mRecorder.isRecording()) {
             ensureAnim();
             drawScene(dc, w, h, mRecorder.getPhase());
         } else {
             stopAnim();
             drawIdle(dc, w, h);
         }
+    }
+
+    // clean phase viewer for screenshots: scene + label + realistic stats, no hints
+    function drawShowcase(dc as Graphics.Dc, w as Number, h as Number) as Void {
+        var ph = mShowPhase;
+        var cx = w / 2.0;
+        var cy = h * 0.40;
+        var u = w / 22.0;
+
+        dc.setColor(colorFor(ph), Graphics.COLOR_TRANSPARENT);
+        dc.drawText(w / 2, h * 0.07, Graphics.FONT_TINY, labelFor(ph), Graphics.TEXT_JUSTIFY_CENTER);
+
+        if (ph == CLIMB) { sceneClimb(dc, cx, cy, u); }
+        else if (ph == EXIT) { sceneExit(dc, cx, cy, u); }
+        else if (ph == FREEFALL) { sceneFreefall(dc, cx, cy, u, h); }
+        else if (ph == CANOPY) { sceneCanopy(dc, cx, cy, u); }
+        else { sceneLanded(dc, cx, cy, u); }
+
+        var alt = [3962, 4128, 2240, 690, 0][ph];
+        var hrv = [112, 138, 166, 128, 104][ph];
+        var ffv = [0, 0, 12, 58, 58][ph];
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(w * 0.30, h * 0.74, Graphics.FONT_XTINY, alt.format("%d") + " m", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(w * 0.70, h * 0.74, Graphics.FONT_XTINY, hrv.format("%d") + " bpm", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(w / 2, h * 0.80, Graphics.FONT_XTINY, "VV " + ffv.format("%d") + "s", Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     function labelFor(ph as Number) as String {
@@ -119,6 +162,8 @@ class SkydiveView extends WatchUi.View {
         }
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
         dc.drawText(w / 2, h * 0.85, Graphics.FONT_XTINY, "Tik = start", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(w / 2, h * 0.92, Graphics.FONT_XTINY, "Hou vast = fases", Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     // ---------------------------------------------------------- recording scene
