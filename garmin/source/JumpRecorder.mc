@@ -413,17 +413,18 @@ class JumpRecorder {
         mUploader = new Uploader();
         mUploader.setStatusHandler(method(:onUploadStatus));
         mUploader.enqueue(buildPayload());
-        mPostMsg = "Versturen...";
+        mPostMsg = WatchUi.loadResource(Rez.Strings.Sending);
         mUploader.flush();
     }
 
     function onUploadStatus(success as Boolean, pending as Number) as Void {
+        var inQ = WatchUi.loadResource(Rez.Strings.InQueue);
         if (success && pending == 0) {
-            mPostMsg = "Verstuurd ✓";
+            mPostMsg = WatchUi.loadResource(Rez.Strings.Sent);
         } else if (success) {
-            mPostMsg = "Verstuurd ✓ (" + pending + " in wachtrij)";
+            mPostMsg = WatchUi.loadResource(Rez.Strings.Sent) + " (" + pending + " " + inQ + ")";
         } else {
-            mPostMsg = pending + " in wachtrij — opnieuw bij verbinding. FIT bewaard.";
+            mPostMsg = pending + " " + inQ + " — " + WatchUi.loadResource(Rez.Strings.Queued);
         }
         WatchUi.requestUpdate();
     }

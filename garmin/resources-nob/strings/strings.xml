@@ -1,0 +1,30 @@
+<strings>
+    <string id="Disclaimer">ADVARSEL|Ikke en høydemåler.|Frifallhøyde|er et ANSLAG.|Bruk alltid AAD +|godkjent høydemåler.|Trykk for å godta</string>
+    <string id="Ready">Klar til opptak</string>
+    <string id="TapStart">Trykk = start</string>
+    <string id="HoldPhases">Hold = faser</string>
+    <string id="TapStop">Trykk = stopp</string>
+    <string id="TapStopAgain">Trykk igjen for å stoppe</string>
+    <string id="InQueue">i kø</string>
+    <string id="GpsSearch">GPS søker…</string>
+    <string id="GpsReady">GPS klar</string>
+    <string id="GpsGood">GPS bra</string>
+    <string id="GpsWeak">GPS svak</string>
+    <string id="GpsLast">GPS siste fix</string>
+    <string id="PhClimb">STIGNING</string>
+    <string id="PhExit">UTHOPP</string>
+    <string id="PhFreefall">FRITT FALL</string>
+    <string id="PhCanopy">SKJERM</string>
+    <string id="PhLanded">LANDET</string>
+    <string id="Summary">Sammendrag</string>
+    <string id="ExitEst">Uthopp (anslag)</string>
+    <string id="RowFreefall">Fritt fall</string>
+    <string id="RowCanopy">Skjerm</string>
+    <string id="PeakVsEst">Maks VS (anslag)</string>
+    <string id="PeakHr">Maks puls</string>
+    <string id="TapClose">Trykk for å lukke</string>
+    <string id="FfPrefix">FF</string>
+    <string id="Sending">Sender…</string>
+    <string id="Sent">Sendt ✓</string>
+    <string id="Queued">prøver igjen online</string>
+</strings>

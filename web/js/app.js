@@ -1,5 +1,5 @@
 import { api } from "./api.js";
-import { el, toast, fmtDuration, fmtDate, num } from "./util.js";
+import { el, toast, fmtDuration, fmtDate, num, joinBr } from "./util.js";
 import { icon } from "./icons.js";
 import {
   MetricCard, JumpPhaseTimeline, ChartCard, JumpHeader, EmptyState,
@@ -450,8 +450,17 @@ function privacyView() {
   view.append(el("a", { class: "back", href: "#/logbook" }, [icon("chevronDown", 16, "rot90"), t("btn.back")]));
   view.append(pageHead(t("privacy.title")));
   const body = el("div", { class: "panel" }, []);
-  for (const para of t("privacy.body").split("\n\n")) {
-    body.append(el("p", { class: "privacy-p" }, para));
+  for (const block of t("privacy.body").split("\n\n")) {
+    const lines = block.split("\n");
+    const first = lines[0];
+    // a short, punctuation-free first line is a section heading
+    const isHeading = lines.length > 1 && first.length < 40 && !/[.:•]$/.test(first) && !first.startsWith("•");
+    if (isHeading) {
+      body.append(el("p", { class: "privacy-h" }, first));
+      body.append(el("p", { class: "privacy-p" }, joinBr(lines.slice(1))));
+    } else {
+      body.append(el("p", { class: "privacy-p" }, joinBr(lines)));
+    }
   }
   view.append(body);
 }

@@ -1,0 +1,30 @@
+<strings>
+    <string id="Disclaimer">ATTENZIONE|Non è un altimetro.|La quota in caduta|è una STIMA.|Usa sempre AAD +|altimetro omologato.|Tocca per accettare</string>
+    <string id="Ready">Pronto a registrare</string>
+    <string id="TapStart">Tocca = avvio</string>
+    <string id="HoldPhases">Tieni = fasi</string>
+    <string id="TapStop">Tocca = stop</string>
+    <string id="TapStopAgain">Tocca di nuovo per fermare</string>
+    <string id="InQueue">in coda</string>
+    <string id="GpsSearch">Ricerca GPS…</string>
+    <string id="GpsReady">GPS pronto</string>
+    <string id="GpsGood">GPS buono</string>
+    <string id="GpsWeak">GPS debole</string>
+    <string id="GpsLast">GPS ultima posizione</string>
+    <string id="PhClimb">SALITA</string>
+    <string id="PhExit">USCITA</string>
+    <string id="PhFreefall">CADUTA LIBERA</string>
+    <string id="PhCanopy">VELA</string>
+    <string id="PhLanded">ATTERRATO</string>
+    <string id="Summary">Riepilogo</string>
+    <string id="ExitEst">Uscita (stima)</string>
+    <string id="RowFreefall">Caduta libera</string>
+    <string id="RowCanopy">Vela</string>
+    <string id="PeakVsEst">VS max (stima)</string>
+    <string id="PeakHr">FC max</string>
+    <string id="TapClose">Tocca per chiudere</string>
+    <string id="FfPrefix">FF</string>
+    <string id="Sending">Invio…</string>
+    <string id="Sent">Inviato ✓</string>
+    <string id="Queued">riprova online</string>
+</strings>

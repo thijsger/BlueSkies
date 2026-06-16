@@ -1,0 +1,30 @@
+<strings>
+    <string id="Disclaimer">ATTENTION|Pas un altimètre.|L'altitude en chute|est une ESTIMATION.|Toujours un AAD +|altimètre homologué.|Touchez pour accepter</string>
+    <string id="Ready">Prêt à enregistrer</string>
+    <string id="TapStart">Touchez = départ</string>
+    <string id="HoldPhases">Maintenir = phases</string>
+    <string id="TapStop">Touchez = stop</string>
+    <string id="TapStopAgain">Touchez encore pour arrêter</string>
+    <string id="InQueue">en file</string>
+    <string id="GpsSearch">Recherche GPS…</string>
+    <string id="GpsReady">GPS prêt</string>
+    <string id="GpsGood">GPS bon</string>
+    <string id="GpsWeak">GPS faible</string>
+    <string id="GpsLast">GPS dernier point</string>
+    <string id="PhClimb">MONTÉE</string>
+    <string id="PhExit">SORTIE</string>
+    <string id="PhFreefall">CHUTE LIBRE</string>
+    <string id="PhCanopy">VOILE</string>
+    <string id="PhLanded">ATTERRI</string>
+    <string id="Summary">Résumé</string>
+    <string id="ExitEst">Sortie (est.)</string>
+    <string id="RowFreefall">Chute libre</string>
+    <string id="RowCanopy">Voile</string>
+    <string id="PeakVsEst">VS max (est.)</string>
+    <string id="PeakHr">FC max</string>
+    <string id="TapClose">Touchez pour fermer</string>
+    <string id="FfPrefix">FF</string>
+    <string id="Sending">Envoi…</string>
+    <string id="Sent">Envoyé ✓</string>
+    <string id="Queued">réessai en ligne</string>
+</strings>

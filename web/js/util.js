@@ -62,6 +62,16 @@ export function el(tag, props = {}, children = []) {
   return e;
 }
 
+// join lines into an array of nodes with <br> between them (for el children)
+export function joinBr(lines) {
+  const out = [];
+  lines.forEach((line, i) => {
+    if (i > 0) out.push(document.createElement("br"));
+    out.push(document.createTextNode(line));
+  });
+  return out;
+}
+
 export function toast(msg, kind = "ok") {
   const t = el("div", { class: `toast ${kind}` }, msg);
   document.body.append(t);

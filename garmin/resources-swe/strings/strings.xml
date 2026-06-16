@@ -1,0 +1,30 @@
+<strings>
+    <string id="Disclaimer">VARNING|Ingen höjdmätare.|Frifallshöjd|är en UPPSKATTNING.|Använd alltid AAD +|godkänd höjdmätare.|Tryck för att godkänna</string>
+    <string id="Ready">Redo att spela in</string>
+    <string id="TapStart">Tryck = start</string>
+    <string id="HoldPhases">Håll = faser</string>
+    <string id="TapStop">Tryck = stopp</string>
+    <string id="TapStopAgain">Tryck igen för att stoppa</string>
+    <string id="InQueue">i kö</string>
+    <string id="GpsSearch">GPS söker…</string>
+    <string id="GpsReady">GPS klar</string>
+    <string id="GpsGood">GPS bra</string>
+    <string id="GpsWeak">GPS svag</string>
+    <string id="GpsLast">GPS senaste fix</string>
+    <string id="PhClimb">STIGNING</string>
+    <string id="PhExit">UTHOPP</string>
+    <string id="PhFreefall">FRITT FALL</string>
+    <string id="PhCanopy">SKÄRM</string>
+    <string id="PhLanded">LANDAT</string>
+    <string id="Summary">Sammanfattning</string>
+    <string id="ExitEst">Uthopp (uppsk.)</string>
+    <string id="RowFreefall">Fritt fall</string>
+    <string id="RowCanopy">Skärm</string>
+    <string id="PeakVsEst">Max VS (uppsk.)</string>
+    <string id="PeakHr">Max puls</string>
+    <string id="TapClose">Tryck för att stänga</string>
+    <string id="FfPrefix">FF</string>
+    <string id="Sending">Skickar…</string>
+    <string id="Sent">Skickat ✓</string>
+    <string id="Queued">försöker igen online</string>
+</strings>

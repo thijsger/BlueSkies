@@ -1,0 +1,30 @@
+<strings>
+    <string id="Disclaimer">ACHTUNG|Kein Höhenmesser.|Freifallhöhe ist|eine SCHÄTZUNG.|Immer AAD +|geprüften Höhenmesser.|Tippen zum Annehmen</string>
+    <string id="Ready">Aufnahmebereit</string>
+    <string id="TapStart">Tippen = Start</string>
+    <string id="HoldPhases">Halten = Phasen</string>
+    <string id="TapStop">Tippen = Stopp</string>
+    <string id="TapStopAgain">Erneut tippen zum Stoppen</string>
+    <string id="InQueue">in Warteschlange</string>
+    <string id="GpsSearch">GPS-Suche…</string>
+    <string id="GpsReady">GPS bereit</string>
+    <string id="GpsGood">GPS gut</string>
+    <string id="GpsWeak">GPS schwach</string>
+    <string id="GpsLast">GPS letzter Fix</string>
+    <string id="PhClimb">STEIGEN</string>
+    <string id="PhExit">ABSPRUNG</string>
+    <string id="PhFreefall">FREIER FALL</string>
+    <string id="PhCanopy">SCHIRM</string>
+    <string id="PhLanded">GELANDET</string>
+    <string id="Summary">Zusammenfassung</string>
+    <string id="ExitEst">Absprung (gesch.)</string>
+    <string id="RowFreefall">Freier Fall</string>
+    <string id="RowCanopy">Schirm</string>
+    <string id="PeakVsEst">Max VS (gesch.)</string>
+    <string id="PeakHr">Max HF</string>
+    <string id="TapClose">Tippen zum Schließen</string>
+    <string id="FfPrefix">FF</string>
+    <string id="Sending">Senden…</string>
+    <string id="Sent">Gesendet ✓</string>
+    <string id="Queued">erneut bei Verbindung</string>
+</strings>

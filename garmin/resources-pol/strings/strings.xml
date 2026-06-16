@@ -1,0 +1,30 @@
+<strings>
+    <string id="Disclaimer">UWAGA|To nie wysokościomierz.|Wysokość w spadaniu|to SZACUNEK.|Zawsze używaj AAD +|atestowanego wys.|Dotknij, aby zaakceptować</string>
+    <string id="Ready">Gotowy do nagrania</string>
+    <string id="TapStart">Dotknij = start</string>
+    <string id="HoldPhases">Przytrzymaj = fazy</string>
+    <string id="TapStop">Dotknij = stop</string>
+    <string id="TapStopAgain">Dotknij ponownie, aby zatrzymać</string>
+    <string id="InQueue">w kolejce</string>
+    <string id="GpsSearch">Szukanie GPS…</string>
+    <string id="GpsReady">GPS gotowy</string>
+    <string id="GpsGood">GPS dobry</string>
+    <string id="GpsWeak">GPS słaby</string>
+    <string id="GpsLast">GPS ostatni fix</string>
+    <string id="PhClimb">WZNOSZENIE</string>
+    <string id="PhExit">WYSKOK</string>
+    <string id="PhFreefall">SPADANIE</string>
+    <string id="PhCanopy">CZASZA</string>
+    <string id="PhLanded">WYLĄDOWANO</string>
+    <string id="Summary">Podsumowanie</string>
+    <string id="ExitEst">Wyskok (szac.)</string>
+    <string id="RowFreefall">Spadanie</string>
+    <string id="RowCanopy">Czasza</string>
+    <string id="PeakVsEst">Maks VS (szac.)</string>
+    <string id="PeakHr">Maks HR</string>
+    <string id="TapClose">Dotknij, aby zamknąć</string>
+    <string id="FfPrefix">FF</string>
+    <string id="Sending">Wysyłanie…</string>
+    <string id="Sent">Wysłano ✓</string>
+    <string id="Queued">ponów po połączeniu</string>
+</strings>

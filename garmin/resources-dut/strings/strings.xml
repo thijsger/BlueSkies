@@ -1,0 +1,30 @@
+<strings>
+    <string id="Disclaimer">LET OP|Geen hoogtemeter.|Vrije-valhoogte|is een SCHATTING.|Gebruik altijd een AAD +|goedgekeurde hoogtemeter.|Tik om te accepteren</string>
+    <string id="Ready">Klaar voor opname</string>
+    <string id="TapStart">Tik = start</string>
+    <string id="HoldPhases">Hou vast = fases</string>
+    <string id="TapStop">Tik = stop</string>
+    <string id="TapStopAgain">Tik nogmaals om te stoppen</string>
+    <string id="InQueue">in wachtrij</string>
+    <string id="GpsSearch">GPS zoeken…</string>
+    <string id="GpsReady">GPS klaar</string>
+    <string id="GpsGood">GPS goed</string>
+    <string id="GpsWeak">GPS zwak</string>
+    <string id="GpsLast">GPS laatste fix</string>
+    <string id="PhClimb">KLIM</string>
+    <string id="PhExit">EXIT</string>
+    <string id="PhFreefall">VRIJE VAL</string>
+    <string id="PhCanopy">CANOPY</string>
+    <string id="PhLanded">GELAND</string>
+    <string id="Summary">Samenvatting</string>
+    <string id="ExitEst">Exit (schat.)</string>
+    <string id="RowFreefall">Vrije val</string>
+    <string id="RowCanopy">Canopy</string>
+    <string id="PeakVsEst">Piek VS (schat.)</string>
+    <string id="PeakHr">Piek HR</string>
+    <string id="TapClose">Tik om te sluiten</string>
+    <string id="FfPrefix">FF</string>
+    <string id="Sending">Versturen…</string>
+    <string id="Sent">Verstuurd ✓</string>
+    <string id="Queued">opnieuw bij verbinding</string>
+</strings>

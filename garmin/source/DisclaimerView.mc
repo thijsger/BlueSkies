@@ -10,32 +10,36 @@ class DisclaimerView extends WatchUi.View {
         View.initialize();
     }
 
+    function splitPipe(s as Lang.String) as Lang.Array {
+        var out = [];
+        var rest = s;
+        var idx = rest.find("|");
+        while (idx != null) {
+            out.add(rest.substring(0, idx));
+            rest = rest.substring(idx + 1, rest.length());
+            idx = rest.find("|");
+        }
+        out.add(rest);
+        return out;
+    }
+
     function onUpdate(dc as Graphics.Dc) as Void {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
         dc.clear();
         var w = dc.getWidth();
         var h = dc.getHeight();
 
-        var lines = [
-            "LET OP",
-            "Geen hoogtemeter.",
-            "Vrije-val-hoogte is",
-            "een SCHATTING.",
-            "Gebruik altijd AAD +",
-            "goedgekeurde",
-            "hoogtemeter.",
-            "",
-            "Tik om te accepteren"
-        ];
+        // localized disclaimer: lines separated by "|"
+        var lines = splitPipe(WatchUi.loadResource(Rez.Strings.Disclaimer) as String);
 
         dc.setColor(Graphics.COLOR_YELLOW, Graphics.COLOR_TRANSPARENT);
         dc.drawText(w / 2, h * 0.10, Graphics.FONT_TINY, lines[0], Graphics.TEXT_JUSTIFY_CENTER);
 
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        var y = h * 0.22;
+        var y = h * 0.24;
         for (var i = 1; i < lines.size(); i++) {
             dc.drawText(w / 2, y, Graphics.FONT_XTINY, lines[i], Graphics.TEXT_JUSTIFY_CENTER);
-            y += h * 0.085;
+            y += h * 0.10;
         }
     }
 }

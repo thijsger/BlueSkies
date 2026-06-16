@@ -32,21 +32,6 @@ class SkydiveView extends WatchUi.View {
     var mAnimTimer as Timer.Timer? = null;
     var mFrame as Number = 0;
 
-    // showcase: clean swipeable phase viewer (for marketing screenshots)
-    var mShowcase as Boolean = false;
-    var mShowPhase as Number = 0;
-
-    function startShowcase() as Void {
-        if (mRecorder.isRecording()) { return; }
-        mShowcase = true; mShowPhase = CLIMB; ensureAnim(); WatchUi.requestUpdate();
-    }
-    function stopShowcase() as Void {
-        mShowcase = false; if (!mRecorder.isRecording()) { stopAnim(); } WatchUi.requestUpdate();
-    }
-    function showStep(d as Number) as Void {
-        mShowPhase = (mShowPhase + d + 5) % 5; WatchUi.requestUpdate();
-    }
-
     function initialize() {
         View.initialize();
         mRecorder = new JumpRecorder();
@@ -78,10 +63,7 @@ class SkydiveView extends WatchUi.View {
         dc.clear();
         var w = dc.getWidth();
         var h = dc.getHeight();
-        if (mShowcase) {
-            ensureAnim();
-            drawShowcase(dc, w, h);
-        } else if (mRecorder.isRecording()) {
+        if (mRecorder.isRecording()) {
             ensureAnim();
             drawScene(dc, w, h, mRecorder.getPhase());
         } else {
@@ -90,38 +72,15 @@ class SkydiveView extends WatchUi.View {
         }
     }
 
-    // clean phase viewer for screenshots: scene + label + realistic stats, no hints
-    function drawShowcase(dc as Graphics.Dc, w as Number, h as Number) as Void {
-        var ph = mShowPhase;
-        var cx = w / 2.0;
-        var cy = h * 0.40;
-        var u = w / 22.0;
-
-        dc.setColor(colorFor(ph), Graphics.COLOR_TRANSPARENT);
-        dc.drawText(w / 2, h * 0.07, Graphics.FONT_TINY, labelFor(ph), Graphics.TEXT_JUSTIFY_CENTER);
-
-        if (ph == CLIMB) { sceneClimb(dc, cx, cy, u); }
-        else if (ph == EXIT) { sceneExit(dc, cx, cy, u); }
-        else if (ph == FREEFALL) { sceneFreefall(dc, cx, cy, u, h); }
-        else if (ph == CANOPY) { sceneCanopy(dc, cx, cy, u); }
-        else { sceneLanded(dc, cx, cy, u); }
-
-        var alt = [3962, 4128, 2240, 690, 0][ph];
-        var hrv = [112, 138, 166, 128, 104][ph];
-        var ffv = [0, 0, 12, 58, 58][ph];
-        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(w * 0.30, h * 0.74, Graphics.FONT_XTINY, alt.format("%d") + " m", Graphics.TEXT_JUSTIFY_CENTER);
-        dc.drawText(w * 0.70, h * 0.74, Graphics.FONT_XTINY, hrv.format("%d") + " bpm", Graphics.TEXT_JUSTIFY_CENTER);
-        dc.drawText(w / 2, h * 0.80, Graphics.FONT_XTINY, "VV " + ffv.format("%d") + "s", Graphics.TEXT_JUSTIFY_CENTER);
-    }
-
     function labelFor(ph as Number) as String {
-        if (ph == CLIMB) { return "KLIM"; }
-        if (ph == EXIT) { return "EXIT"; }
-        if (ph == FREEFALL) { return "VRIJE VAL"; }
-        if (ph == CANOPY) { return "CANOPY"; }
-        return "GELAND";
+        var id = Rez.Strings.PhLanded;
+        if (ph == CLIMB) { id = Rez.Strings.PhClimb; }
+        else if (ph == EXIT) { id = Rez.Strings.PhExit; }
+        else if (ph == FREEFALL) { id = Rez.Strings.PhFreefall; }
+        else if (ph == CANOPY) { id = Rez.Strings.PhCanopy; }
+        return WatchUi.loadResource(id);
     }
+    function tr(id) as String { return WatchUi.loadResource(id); }
     function colorFor(ph as Number) as Number {
         if (ph == CLIMB) { return 0x4F8DFF; }
         if (ph == EXIT) { return 0xF6A23B; }
@@ -135,15 +94,15 @@ class SkydiveView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         dc.drawText(w / 2, h * 0.16, Graphics.FONT_MEDIUM, "BlueSkies", Graphics.TEXT_JUSTIFY_CENTER);
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(w / 2, h * 0.32, Graphics.FONT_XTINY, "Klaar om op te nemen", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(w / 2, h * 0.32, Graphics.FONT_XTINY, tr(Rez.Strings.Ready), Graphics.TEXT_JUSTIFY_CENTER);
 
         var q = mRecorder.getGpsQuality();
         var gpsColor = Graphics.COLOR_RED;
-        var gpsTxt = "GPS zoeken...";
-        if (q >= 4) { gpsColor = Graphics.COLOR_GREEN; gpsTxt = "GPS klaar"; }
-        else if (q == 3) { gpsColor = Graphics.COLOR_GREEN; gpsTxt = "GPS goed"; }
-        else if (q == 2) { gpsColor = Graphics.COLOR_YELLOW; gpsTxt = "GPS zwak"; }
-        else if (q == 1) { gpsColor = Graphics.COLOR_YELLOW; gpsTxt = "GPS laatste fix"; }
+        var gpsTxt = tr(Rez.Strings.GpsSearch);
+        if (q >= 4) { gpsColor = Graphics.COLOR_GREEN; gpsTxt = tr(Rez.Strings.GpsReady); }
+        else if (q == 3) { gpsColor = Graphics.COLOR_GREEN; gpsTxt = tr(Rez.Strings.GpsGood); }
+        else if (q == 2) { gpsColor = Graphics.COLOR_YELLOW; gpsTxt = tr(Rez.Strings.GpsWeak); }
+        else if (q == 1) { gpsColor = Graphics.COLOR_YELLOW; gpsTxt = tr(Rez.Strings.GpsLast); }
         dc.setColor(gpsColor, Graphics.COLOR_TRANSPARENT);
         dc.drawText(w / 2, h * 0.46, Graphics.FONT_SMALL, gpsTxt, Graphics.TEXT_JUSTIFY_CENTER);
 
@@ -155,15 +114,13 @@ class SkydiveView extends WatchUi.View {
         var msg = mRecorder.getPostMessage();
         if (pending > 0) {
             dc.setColor(Graphics.COLOR_YELLOW, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(w / 2, h * 0.72, Graphics.FONT_XTINY, pending + " in wachtrij", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(w / 2, h * 0.72, Graphics.FONT_XTINY, pending + " " + tr(Rez.Strings.InQueue), Graphics.TEXT_JUSTIFY_CENTER);
         } else if (msg.length() > 0) {
             dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
             dc.drawText(w / 2, h * 0.72, Graphics.FONT_XTINY, msg, Graphics.TEXT_JUSTIFY_CENTER);
         }
         dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(w / 2, h * 0.85, Graphics.FONT_XTINY, "Tik = start", Graphics.TEXT_JUSTIFY_CENTER);
-        dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(w / 2, h * 0.92, Graphics.FONT_XTINY, "Hou vast = fases", Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(w / 2, h * 0.85, Graphics.FONT_XTINY, tr(Rez.Strings.TapStart), Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     // ---------------------------------------------------------- recording scene
@@ -187,17 +144,17 @@ class SkydiveView extends WatchUi.View {
         var altTxt = (alt == null) ? "-- m" : alt.format("%d") + " m";
         var hr = mRecorder.getCurrentHr();
         var hrTxt = (hr == null) ? "-- bpm" : hr.format("%d") + " bpm";
-        var ffTxt = "VV " + mRecorder.getFreefallTime().format("%d") + "s";
+        var ffTxt = tr(Rez.Strings.FfPrefix) + " " + mRecorder.getFreefallTime().format("%d") + "s";
         dc.drawText(w * 0.30, h * 0.74, Graphics.FONT_XTINY, altTxt, Graphics.TEXT_JUSTIFY_CENTER);
         dc.drawText(w * 0.70, h * 0.74, Graphics.FONT_XTINY, hrTxt, Graphics.TEXT_JUSTIFY_CENTER);
         dc.drawText(w / 2, h * 0.80, Graphics.FONT_XTINY, ffTxt, Graphics.TEXT_JUSTIFY_CENTER);
 
         if (mStopArmed) {
             dc.setColor(Graphics.COLOR_YELLOW, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(w / 2, h * 0.90, Graphics.FONT_XTINY, "Tik nogmaals om te stoppen", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(w / 2, h * 0.90, Graphics.FONT_XTINY, tr(Rez.Strings.TapStopAgain), Graphics.TEXT_JUSTIFY_CENTER);
         } else {
             dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(w / 2, h * 0.90, Graphics.FONT_XTINY, "Tik = stop", Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(w / 2, h * 0.90, Graphics.FONT_XTINY, tr(Rez.Strings.TapStop), Graphics.TEXT_JUSTIFY_CENTER);
         }
     }
 

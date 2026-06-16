@@ -223,10 +223,58 @@ const STR = {
     en: "BlueSkies is a personal reference logbook, NOT a safety instrument and NOT an altimeter. Absolute freefall altitude and vertical speed are estimates (the barometer is unreliable during freefall). Always use an approved altimeter and an AAD. This app does not replace mandatory equipment or any legally required paper logbook.",
   },
   "privacy.body": {
-    nl: "Privacy: we bewaren je naam, e-mailadres en je sprong-data (GPS-track, hoogte, hartslag) om je logboek te tonen. Data staat op een server in de EU (Frankfurt) en wordt niet met derden gedeeld of verkocht. Inloggen met Google gebruikt alleen je naam/e-mail. Je kunt sprongen altijd verwijderen en je data downloaden; vraag accountverwijdering via de beheerder.\n\n" +
-      "Disclaimer: BlueSkies is een persoonlijk naslag-logboek, géén veiligheidsinstrument en géén hoogtemeter. Vrije-val-hoogte en -snelheid zijn schattingen. Gebruik altijd een goedgekeurde hoogtemeter en AAD. Een papieren logboek, AAD en aparte hoogtemeter zijn wettelijk verplicht; deze app vervangt die niet.",
-    en: "Privacy: we store your name, email and jump data (GPS track, altitude, heart rate) to show your logbook. Data is hosted on a server in the EU (Frankfurt) and is never shared or sold. Google sign-in only uses your name/email. You can delete jumps and download your data anytime; request account deletion via the administrator.\n\n" +
-      "Disclaimer: BlueSkies is a personal reference logbook, not a safety instrument and not an altimeter. Freefall altitude and speed are estimates. Always use an approved altimeter and AAD. A paper logbook, AAD and separate altimeter are legally required; this app does not replace them.",
+    nl: "Laatst bijgewerkt: 16 juni 2026.\n\n" +
+      "BlueSkies is een persoonlijk skydive-logboek. Deze policy legt uit welke gegevens we verzamelen, waarom, en welke rechten je hebt. We verzamelen alleen wat nodig is om jouw logboek te laten werken — we verkopen je gegevens niet en gebruiken ze niet voor advertenties of profilering.\n\n" +
+      "Welke gegevens we verzamelen\n" +
+      "• Account: je naam, e-mailadres en (bij e-mailregistratie) een wachtwoord dat versleuteld wordt opgeslagen (scrypt-hash — wij kunnen het niet teruglezen). Bij inloggen met Google ontvangen we alleen je naam, e-mailadres en Google-account-ID; we krijgen géén toegang tot je wachtwoord of andere Google-gegevens.\n" +
+      "• Sprongdata: GPS-track en landingslocatie, hoogte, verticale snelheid (schatting), freefall- en canopytijd, tijdstippen, en — indien je horloge dit meet — je hartslag. Hartslag is gezondheidsgerelateerde data. Daarnaast optioneel: toestelnaam, dropzone, sprongtype, sprongnummer en eigen notities die je toevoegt.\n" +
+      "• Technisch: een sessie-cookie om ingelogd te blijven en een API-sleutel waarmee je horloge sprongen kan uploaden.\n\n" +
+      "Waarvoor we het gebruiken\n" +
+      "Uitsluitend om je sprongen op te slaan en je je eigen logboek, statistieken en 3D-track te tonen. Je gegevens zijn afgeschermd per account; andere gebruikers kunnen ze niet zien.\n\n" +
+      "Waar je gegevens staan\n" +
+      "Je gegevens worden opgeslagen in een SQLite-database op onze server, gehost bij Render (cloud-infrastructuur in de Verenigde Staten). Sprongen die je horloge offline opneemt, worden lokaal op het horloge bewaard tot ze geüpload kunnen worden.\n\n" +
+      "Delen met derden\n" +
+      "We verkopen of verhuren je gegevens niet en delen ze niet voor reclame. Gegevens worden alleen verwerkt door de partijen die nodig zijn om de dienst te draaien: Render (hosting) en Google (alleen wanneer je voor Google-login kiest). Er zijn geen trackers of advertentienetwerken.\n\n" +
+      "Bewaren en verwijderen\n" +
+      "We bewaren je gegevens zolang je account bestaat. Je kunt losse sprongen op elk moment verwijderen en al je data downloaden (.json) via je profiel. Voor verwijdering van je volledige account neem je contact op via het onderstaande adres; we verwijderen dan je account en bijbehorende sprongen.\n\n" +
+      "Beveiliging\n" +
+      "Verbindingen verlopen via HTTPS, wachtwoorden worden gehasht opgeslagen en sessies via een ondertekende cookie. Geen enkel systeem is volledig veilig, maar we beperken toegang tot wat noodzakelijk is.\n\n" +
+      "Kinderen\n" +
+      "BlueSkies is niet bedoeld voor kinderen jonger dan 16.\n\n" +
+      "Jouw rechten\n" +
+      "Je hebt recht op inzage, export, correctie en verwijdering van je gegevens. Gebruik de download-knop in je profiel of neem contact op.\n\n" +
+      "Contact\n" +
+      "Vragen over je privacy? Mail naar thijsjwger@gmail.com.\n\n" +
+      "Wijzigingen\n" +
+      "We kunnen deze policy bijwerken; de datum bovenaan geeft de laatste versie aan.\n\n" +
+      "Disclaimer\n" +
+      "BlueSkies is een persoonlijk naslag-logboek, GÉÉN veiligheidsinstrument en GÉÉN hoogtemeter. Vrije-val-hoogte en verticale snelheid zijn schattingen en mogen nooit worden gebruikt voor beslissingen in de lucht. Gebruik altijd een werkende AAD en een goedgekeurde hoogtemeter. Skydiven brengt risico's met zich mee; je bent zelf verantwoordelijk voor je veiligheid en uitrusting.",
+    en: "Last updated: 16 June 2026.\n\n" +
+      "BlueSkies is a personal skydiving logbook. This policy explains what data we collect, why, and the rights you have. We only collect what is needed to run your logbook — we do not sell your data and never use it for advertising or profiling.\n\n" +
+      "What we collect\n" +
+      "• Account: your name, email address and (for email sign-up) a password stored encrypted as a scrypt hash that we cannot read back. When you sign in with Google we only receive your name, email and Google account ID; we never get your password or other Google data.\n" +
+      "• Jump data: GPS track and landing location, altitude, vertical speed (an estimate), freefall and canopy time, timestamps, and — if your watch measures it — your heart rate. Heart rate is health-related data. Optionally: device name, dropzone, jump type, jump number and any notes you add yourself.\n" +
+      "• Technical: a session cookie to keep you signed in, and an API key your watch uses to upload jumps.\n\n" +
+      "How we use it\n" +
+      "Only to store your jumps and show you your own logbook, statistics and 3D track. Your data is scoped to your account; other users cannot see it.\n\n" +
+      "Where your data lives\n" +
+      "Your data is stored in a SQLite database on our server, hosted with Render (cloud infrastructure in the United States). Jumps your watch records offline are kept locally on the watch until they can be uploaded.\n\n" +
+      "Sharing with third parties\n" +
+      "We do not sell or rent your data and never share it for advertising. Data is only processed by the providers needed to run the service: Render (hosting) and Google (only when you choose Google sign-in). There are no trackers or ad networks.\n\n" +
+      "Retention and deletion\n" +
+      "We keep your data for as long as your account exists. You can delete individual jumps at any time and download all your data (.json) from your profile. To delete your entire account, contact us at the address below; we will remove your account and its jumps.\n\n" +
+      "Security\n" +
+      "Connections use HTTPS, passwords are stored hashed, and sessions use a signed cookie. No system is perfectly secure, but we limit access to what is necessary.\n\n" +
+      "Children\n" +
+      "BlueSkies is not intended for children under 16.\n\n" +
+      "Your rights\n" +
+      "You have the right to access, export, correct and delete your data. Use the download button in your profile or contact us.\n\n" +
+      "Contact\n" +
+      "Questions about your privacy? Email thijsjwger@gmail.com.\n\n" +
+      "Changes\n" +
+      "We may update this policy; the date at the top reflects the latest version.\n\n" +
+      "Disclaimer\n" +
+      "BlueSkies is a personal reference logbook, NOT a safety instrument and NOT an altimeter. Freefall altitude and vertical speed are estimates and must never be used to make in-air decisions. Always jump with a working AAD and an approved altimeter. Skydiving carries inherent risk; you are responsible for your own safety and equipment.",
   },
 };
 
