@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy Policy — BlueSkies</title>
+  <link rel="icon" href="/img/icon-light.png">
+  <style>
+    :root { --text:#0f1b33; --muted:#5b6b86; --line:#e3e9f2; --accent:#2f6bff; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: #f7fafe; color: var(--text);
+      font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 40px 22px 80px; }
+    header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    header img { height: 30px; }
+    h1 { font-size: 1.7rem; margin: 22px 0 4px; }
+    .updated { color: var(--muted); font-size: 0.9rem; margin: 0 0 26px; }
+    h2 { font-size: 1.08rem; margin: 30px 0 8px; }
+    p { color: #243352; margin: 0 0 14px; }
+    ul { margin: 0 0 14px; padding-left: 20px; color: #243352; }
+    li { margin: 0 0 6px; }
+    a { color: var(--accent); }
+    .note {
+      background: #fff; border: 1px solid var(--line); border-radius: 12px;
+      padding: 16px 18px; margin: 26px 0; color: #243352;
+    }
+    .note strong { color: var(--text); }
+    footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.86rem; }
+    footer a { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <img src="/img/wordmark-light.png" alt="BlueSkies">
+    </header>
+
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: 16 June 2026</p>
+
+    <p>BlueSkies is a personal skydiving logbook. This policy explains what data we
+      collect, why, and the rights you have. We only collect what is needed to run
+      your logbook — we do not sell your data and never use it for advertising or profiling.</p>
+
+    <h2>What we collect</h2>
+    <ul>
+      <li><strong>Account:</strong> your name, email address and (for email sign-up) a password
+        stored encrypted as a scrypt hash that we cannot read back. When you sign in with
+        Google we only receive your name, email and Google account ID; we never get your
+        password or other Google data.</li>
+      <li><strong>Jump data:</strong> GPS track and landing location, altitude, vertical speed
+        (an estimate), freefall and canopy time, timestamps, and — if your watch measures it —
+        your heart rate. Heart rate is health-related data. Optionally: device name, dropzone,
+        jump type, jump number and any notes you add yourself.</li>
+      <li><strong>Technical:</strong> a session cookie to keep you signed in, and an API key
+        your watch uses to upload jumps.</li>
+    </ul>
+
+    <h2>How we use it</h2>
+    <p>Only to store your jumps and show you your own logbook, statistics and 3D track. Your
+      data is scoped to your account; other users cannot see it.</p>
+
+    <h2>Where your data lives</h2>
+    <p>Your data is stored in a SQLite database on our server, hosted with Render (cloud
+      infrastructure in the United States). Jumps your watch records offline are kept locally
+      on the watch until they can be uploaded.</p>
+
+    <h2>Sharing with third parties</h2>
+    <p>We do not sell or rent your data and never share it for advertising. Data is only
+      processed by the providers needed to run the service: Render (hosting) and Google (only
+      when you choose Google sign-in). There are no trackers or ad networks.</p>
+
+    <h2>Retention and deletion</h2>
+    <p>We keep your data for as long as your account exists. You can delete individual jumps at
+      any time and download all your data (.json) from your profile. To delete your entire
+      account, contact us at the address below; we will remove your account and its jumps.</p>
+
+    <h2>Security</h2>
+    <p>Connections use HTTPS, passwords are stored hashed, and sessions use a signed cookie.
+      No system is perfectly secure, but we limit access to what is necessary.</p>
+
+    <h2>Children</h2>
+    <p>BlueSkies is not intended for children under 16.</p>
+
+    <h2>Your rights</h2>
+    <p>You have the right to access, export, correct and delete your data. Use the download
+      button in your profile or contact us.</p>
+
+    <h2>Contact</h2>
+    <p>Questions about your privacy? Email
+      <a href="mailto:thijsjwger@gmail.com">thijsjwger@gmail.com</a>.</p>
+
+    <h2>Changes</h2>
+    <p>We may update this policy; the date at the top reflects the latest version.</p>
+
+    <div class="note">
+      <strong>Safety disclaimer.</strong> BlueSkies is a personal reference logbook,
+      <strong>not</strong> a safety instrument and <strong>not</strong> an altimeter. Freefall
+      altitude and vertical speed are estimates and must never be used to make in-air decisions.
+      Always jump with a working AAD and an approved altimeter. Skydiving carries inherent risk;
+      you are responsible for your own safety and equipment.
+    </div>
+
+    <footer>
+      <a href="/">← Back to BlueSkies</a>
+    </footer>
+  </div>
+</body>
+</html>
