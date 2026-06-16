@@ -29,8 +29,7 @@ export async function renderLogin(container, onAuthed) {
     card.innerHTML = "";
     card.append(
       el("div", { class: "auth-brand" }, [
-        el("span", { class: "auth-logo", html: `<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11a9 9 0 0 1 18 0"/><path d="M3 11 11 20"/><path d="M21 11 13 20"/><path d="M9 11l2 9"/><path d="M15 11l-2 9"/><path d="M11 20l1 2 1-2"/></svg>` }),
-        el("div", { class: "auth-word" }, [el("b", {}, "Blue"), el("span", { class: "grad" }, "Skies")]),
+        el("img", { class: "auth-logo-img", src: "/img/wordmark-light.png", alt: "BlueSkies" }),
       ]),
       el("h1", { class: "auth-title" }, titleFor()),
       el("p", { class: "auth-sub" }, subFor()),

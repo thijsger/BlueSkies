@@ -13,7 +13,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="/css/style.css" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234f8dff' stroke-width='2' stroke-linecap='round'><path d='M3 11a9 9 0 0 1 18 0'/><path d='M3 11 11 20'/><path d='M21 11 13 20'/><path d='M9 11l2 9'/><path d='M15 11l-2 9'/></svg>" />
+  <link rel="icon" type="image/png" href="/img/icon-light.png" />
+  <link rel="apple-touch-icon" href="/img/icon-light.png" />
+  <meta property="og:title" content="BlueSkies — Skydive Tracker" />
+  <meta property="og:description" content="Your personal skydive logbook with 3D jump tracks, charts and stats." />
+  <meta property="og:image" content="/img/wordmark-light.png" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script type="importmap">
@@ -31,12 +37,7 @@
 
   <header class="topbar">
     <a class="brand" href="#/logbook">
-      <span class="brand-logo">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 11a9 9 0 0 1 18 0"/><path d="M3 11 11 20"/><path d="M21 11 13 20"/><path d="M9 11l2 9"/><path d="M15 11l-2 9"/><path d="M11 20l1 2 1-2"/>
-        </svg>
-      </span>
-      <span class="brand-text">Blue<span class="brand-accent">Skies</span></span>
+      <img class="brand-img" src="/img/wordmark-light.png" alt="BlueSkies" />
     </a>
 
     <nav>
