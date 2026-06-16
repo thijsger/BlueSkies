@@ -9,7 +9,7 @@ import { backupTo } from "./db.js";
 // NOTE: render.yaml sets rootDir=server, so only changes under server/ trigger a
 // Render auto-deploy. Web-only changes won't redeploy on their own — bump this to
 // force a deploy that ships the latest web/ too.
-const BUILD = "2026-06-16.2";
+const BUILD = "2026-06-16.3";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();

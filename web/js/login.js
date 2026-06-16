@@ -143,7 +143,8 @@ function mountGoogle(wrap, clientId, onAuthed) {
         catch (e) { toast(authErr(e), "err"); }
       },
     });
-    google.accounts.id.renderButton(wrap, { theme: "outline", size: "large", width: 320, text: "continue_with", shape: "pill" });
+    const wpx = Math.min(360, Math.max(220, wrap.clientWidth || 300));
+    google.accounts.id.renderButton(wrap, { theme: "outline", size: "large", width: wpx, text: "continue_with", shape: "pill" });
   };
   if (window.google && google.accounts) return init();
   const s = document.createElement("script");
